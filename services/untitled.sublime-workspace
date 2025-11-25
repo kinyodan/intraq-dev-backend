@@ -1,0 +1,352 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"m",
+				"models"
+			],
+			[
+				"ret",
+				"return"
+			],
+			[
+				"f",
+				"fle_name"
+			],
+			[
+				"ra",
+				"random"
+			]
+		]
+	},
+	"buffers":
+	[
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"termin",
+				"Terminus: Open Default Shell in Tab (View)"
+			],
+			[
+				"insta",
+				"Package Control: Install Package"
+			],
+			[
+				"terminus",
+				"Preferences: Terminus Command Palette"
+			],
+			[
+				"install ",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 130.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+	],
+	"file_history":
+	[
+		"/home/me/dev/dataentry/backend/services/visualization_service.py",
+		"/home/me/dev/dataentry/backend/services/upload_service.py",
+		"/home/me/dev/dataentry/backend/utils/file_utils.py",
+		"/home/me/dev/dataentry/backend/schemas.py",
+		"/home/me/dev/dataentry/backend/services/whatsapp_service.py",
+		"/home/me/dev/dataentry/backend/models/models.py",
+		"/home/me/dev/dataentry/backend/ReadME.md",
+		"/home/me/dev/dataentry/backend/requirements.txt",
+		"/home/me/dev/dataentry/backend/main.py",
+		"/home/me/dev/dataentry/backend/services/client_service.py",
+		"/home/me/dev/dataentry/backend/services/onboarding_service.py",
+		"/home/me/dev/dataentry/backend/dataengine.py",
+		"/home/me/dev/dataentry/backend/.env",
+		"/home/me/dev/dataentry/gitleaks/go.mod",
+		"/home/me/dev/dataentry/backend/db.py",
+		"/home/me/dev/dataentry/index.html",
+		"/home/me/dev/dataentry/landing-main/nuxt.config.ts",
+		"/home/me/dev/algorithms/test_alogorithms_two.py",
+		"/home/me/dev/algorithms/alogorithms_two.py",
+		"/home/me/dev/dfe/intraq_target_list.csv",
+		"/home/me/dev/algorithms/algorithms.py",
+		"/home/me/dev/dfe/banene0_1_endline.csv",
+		"/home/me/dev/dfe/banene0_2_endline.csv",
+		"/home/me/dev/algorithms/test_alogorithms.py",
+		"/home/me/dev/dfe/normalizer.py",
+		"/home/me/dev/dfe/tarbaj-cor_1.csv",
+		"/home/me/dev/dfe/banene0_2.csv",
+		"/home/me/dev/dfe/banene0_1.csv",
+		"/home/me/dev/dfe/banene0_1_loaded_records.csv",
+		"/home/me/dev/dfe/autofill.js",
+		"/home/me/dev/dfe/batalu-cor_1.csv",
+		"/home/me/dev/dfe/darwago-cor_1.csv",
+		"/home/me/dev/dfe/darwago-cor_1_loaded_records.csv",
+		"/home/me/dev/dfe/tarbaj-cor_1_loaded_records.csv",
+		"/home/me/dev/dfe/app_csv_clean.py",
+		"/home/me/dev/dfe/habasswein2_normalzed_20251022_161102.xlsx",
+		"/home/me/dev/dfe/habasswein2_endline2.csv",
+		"/home/me/dev/dfe/habasswein2_endline1_loaded_records.csv",
+		"/home/me/dev/dfe/habasswein2_endline1.csv",
+		"/home/me/dev/dfe/habasswein2_20251022_161102_1.csv",
+		"/home/me/dev/dfe/habasswein2_20251022_161102_loaded_records.csv",
+		"/home/me/dev/dfe/habasswein2_20251022_161102.csv",
+		"/home/me/dev/dfe/csv_splt.py",
+		"/home/me/dev/dfe/batalu_2.csv",
+		"/home/me/acess",
+		"/home/me/dev/dfe/batalu_1_endline.csv",
+		"/home/me/dev/dfe/batalu_1_endline_loaded_records.csv",
+		"/home/me/dev/dfe/batalu_2_endline.csv",
+		"/home/me/dev/dfe/habasswein2.xlsx",
+		"/home/me/dev/dfe/batalu_2_loaded_records.csv",
+		"/home/me/dev/dfe/barwago_2_baseline_loaded_records.csv",
+		"/home/me/dev/dfe/barwago_2_baseline.csv",
+		"/home/me/dev/dfe/barwago_1_baseline.csv",
+		"/home/me/dev/dfe/batalu_1.csv",
+		"/home/me/dev/dfe/batalu_3.csv",
+		"/home/me/dev/dfe/barwago_1_baseline_loaded_records.csv",
+		"/home/me/dev/dfe/dump_barwago/barwago_1.csv",
+		"/home/me/dev/dfe/dump_barwago/barwago_4.csv",
+		"/home/me/dev/dfe/barwago_1.csv",
+		"/home/me/dev/dfe/barwago_2.csv",
+		"/home/me/dev/dfe/barwago_3.csv",
+		"/home/me/dev/dfe/danaba_endline2.csv",
+		"/home/me/dev/dfe/danaba_endline2_loaded_records.csv",
+		"/home/me/dev/dfe/danaba_endline3.csv",
+		"/home/me/dev/dfe/danaba_endline1.csv",
+		"/home/me/dev/dfe/danaba_endline1_loaded_records.csv",
+		"/home/me/dev/history",
+		"/home/me/dev/dfe/tarbaj2_1.csv",
+		"/home/me/dev/dfe/tarbaj2_1_loaded_records.csv",
+		"/home/me/dev/dfe/tarbaj2_3.csv",
+		"/home/me/dev/dfe/dfe3.py",
+		"/home/me/dev/dfe/set_data_ndx.py",
+		"/home/me/dev/dfe/csv_clean.py",
+		"/home/me/dev/dfe/main.py",
+		"/home/me/dev/dfe/backlog.csv",
+		"/home/me/dev/dfe/tarbaj2_2.csv",
+		"/home/me/dev/dfe/tarbaj2_2_loaded_records.csv",
+		"/home/me/dev/dfe/calc_data_disability_status.py",
+		"/home/me/dev/dfe/record_sync/main.py",
+		"/home/me/dev/dfe/elnur_1_endline.csv",
+		"/home/me/dev/dfe/elnur_2_endline_loaded_records.csv",
+		"/home/me/dev/dfe/elnur_1_endline_loaded_records.csv",
+		"/home/me/dev/dfe/elnur_2_endline.csv",
+		"/home/me/dev/dfe/barwago_1_loaded_records.csv",
+		"/home/me/dev/dfe/barwago_4.csv",
+		"/home/me/dev/dfe/barwago_normalzed_20251018_171231.xlsx",
+		"/home/me/dev/dfe/danaba_normalzed_normalzed_20251016_162349_3_loaded_records.csv",
+		"/home/me/dev/dfe/elnur_1.csv",
+		"/home/me/dev/dfe/elnur_3.csv",
+		"/home/me/dev/dfe/elnur_2.csv",
+		"/home/me/dev/dfe/elnur_normalzed_20251017_213150_3.csv",
+		"/home/me/dev/dfe/elnur_20251017_223718.csv",
+		"/home/me/dev/dfe/danaba_normalzed_normalzed_20251016_162349_3.csv",
+		"/home/me/dev/dfe/to_age.py",
+		"/home/me/dev/dfe/csv_clean2.py",
+		"/home/me/dev/dfe/dfe2.py",
+		"/home/me/dev/dfe/xls_splt.py",
+		"/home/me/dev/dfe/base.py",
+		"/home/me/dev/dfe/danaba_normalzed_normalzed_20251016_162349_2_loaded_records.csv",
+		"/home/me/dev/dfe/danaba_normalzed_normalzed_20251016_162349_2.csv",
+		"/home/me/dev/dfe/danaba_normalzed_normalzed_20251016_162349_1.csv",
+		"/home/me/dev/dfe/danaba_normalzed_normalzed_20251016_162349_1_loaded_records.csv",
+		"/home/me/dev/dfe/lb/danaba_normalzed_normalzed_20251016_162349_1_20251016_212921.csv",
+		"/home/me/dev/dfe/loaded_records3.csv",
+		"/home/me/Downloads/dataentry.automa.json",
+		"/home/me/dev/dfe/config.json",
+		"/home/me/dev/dfe/errored.csv",
+		"/home/me/dev/dfe/tarbaj_data_cleaned2.csv",
+		"/home/me/dev/dfe/tarbaj_data_cleaned1.csv",
+		"/home/me/dev/dfe/tarbaj_data_cleaned1_cleaned.csv",
+		"/home/me/dev/dfe/tarbaj_data_cleaned1_cleaned_test.csv",
+		"/home/me/dev/dfe/tarbaj_data_cleaned2_cleaned.csv",
+		"/home/me/dev/dfe/tarbaj_data_cleaned3_cleaned.csv",
+		"/home/me/dev/dfe/loaded_records.csv",
+		"/home/me/dev/dfe/record_sync/tarbaj_data_cleaned1_cleaned_test.csv",
+		"/home/me/dev/dfe/calc_data.py",
+		"/home/me/dev/dfe/tarbaj_data_cleaned3xaa.csv",
+		"/home/me/dev/dfe/tarbaj_data_cleaned2_employment_statusxa.csv",
+		"/home/me/dev/dfe/tarbaj_data_cleaned2x.csv",
+		"/home/me/dev/dfe/tarbaj_data_cleaned3.csv",
+		"/home/me/dev/dfe/tarbaj_part_1.csv",
+		"/home/me/dev/dfe/tarbaj2_with_age_groups01.xlsx",
+		"/home/me/dev/dfe/tarbaj2_combined_part_1.csv",
+		"/home/me/Downloads/[11-10-2025, 23_07_14] dataentry - logs.json",
+		"/home/me/dev/dfe/tarbaj2_combined.csv",
+		"/home/me/dev/hash_email.py",
+		"/home/me/Documents/wankimani developer emails",
+		"/home/me/Documents/Min_Window_Substring.rb"
+	],
+	"find":
+	{
+		"height": 27.0
+	},
+	"find_in_files":
+	{
+		"height": 101.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"waitForTimeout",
+			"subcounty"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"scrollbar_highlights": true,
+		"show_context": true,
+		"use_buffer2": true,
+		"use_gitignore": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"folders":
+	[
+		{
+			"path": "/home/me/dev/dataentry"
+		},
+		{
+			"path": "/home/me/dev/simokai"
+		}
+	],
+	"groups":
+	[
+		{
+			"sheets":
+			[
+			]
+		},
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 27.0
+	},
+	"input":
+	{
+		"height": 39.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			],
+			[
+				1,
+				0,
+				2,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			0.677271954816,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "",
+	"replace":
+	{
+		"height": 50.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 1,
+	"settings":
+	{
+	},
+	"show_minimap": false,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 237.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

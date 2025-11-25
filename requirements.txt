@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pandas
+sqlalchemy
+python-dotenv
+python-multipart
+openpyxl        # for Excel reading
+pyarrow         # optional, for parquet and faster IO
+duckdb          # optional analytics engine
+psycopg2-binary # optional for postgres
+shortuuid

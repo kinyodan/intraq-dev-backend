@@ -2,13 +2,14 @@ import os
 import json
 from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException, Query
 from fastapi.responses import JSONResponse
-from db.models import Base, engine
 from services.onboarding_service import process_onboarding
 from services.upload_service import handle_upload
 from services.visualization_service import aggregate_for_chart, fetch_table_preview
+from fastapi.middleware.cors import CORSMiddleware
 from db import SessionLocal, engine
-from models.models import Base, Dataset
+from models import Base, Dataset, DatasetMeta
 from schemas import DatasetCreateResponse, DatasetInfo
+import shortuuid
 
 # Ensure metadata DB tables exist
 Base.metadata.create_all(bind=engine)
@@ -16,6 +17,23 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
 
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://intraqapp.simokai.com",
+        "https://intraq.simokai.com",
+        "http://localhost:3000",      # For local development
+        "http://localhost:3001",      # For local development
+        "http://127.0.0.1:3000",      # For local development
+        "https://intraq-ui.vercel.app",
+        "https://intraq-dashboard.vercel.app"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
@@ -45,27 +63,56 @@ async def receive_message(request: Request):
     return {"status": "ok"}
 
 
-@app.post("/upload_dataset/", response_model=dict)
-async def upload_dataset(client_id: str = Form(...), file: UploadFile = File(...)):
+@app.post("/upload_dataset", response_model=dict)
+async def upload_dataset(
+    project_name: str = Form(...),
+    client_id: str = Form(...),
+    project_code: str = Form(...),
+    file: UploadFile = File(...),
+    assigned_to: str = Form(...), 
+    assigned_by: str = Form(...), 
+    ):
+    print(project_name)
+    print(client_id)
+    print(project_code)
+    print(UploadFile)
+
+
+    if project_code == "null":
+        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+
     """Upload a dataset file (Excel, CSV, etc.) and register metadata."""
     content = await file.read()
     try:
-        result = handle_upload(content, file.filename, client_id)
+        result = handle_upload(
+            content, 
+            file.filename, 
+            project_name,
+            assigned_to,
+            assigned_by,
+            client_id,
+            project_code,
+            {})
         return JSONResponse(status_code=201, content=result)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.get("/datasets/", response_model=list[DatasetInfo])
+@app.get("/datasets")
 def list_datasets(client_id: str = Query(None)):
     """Return a list of all uploaded datasets, optionally filtered by client_id."""
     db = SessionLocal()
     try:
+
         q = db.query(Dataset)
         if client_id:
             q = q.filter(Dataset.client_id == client_id)
 
-        datasets = []
+        datasets = {}
+        project_codes = []
+        for qs in q.all():
+            datasets[qs.project_code] = {"datasets": []  } 
+
         for ds in q.all():
             dataset_schema = ds.schema
             try:
@@ -73,17 +120,47 @@ def list_datasets(client_id: str = Query(None)):
             except Exception:
                 dataset_schema = ds.schema
 
-            datasets.append({
+            project_codes.append(ds.project_code)    
+            datasets_record = datasets[ds.project_code]
+            print("START datasets_record-datasets_record-datasets_record")
+            print(ds.filename)
+            print("END datasets_record-datasets_record-datasets_record")
+
+            datasets[ds.project_code]["datasets"].append({
                 "dataset_id": ds.dataset_id,
+                "project_name": ds.project_name.replace("_"," "),
+                "project_code": ds.project_code,
+                "due_date": ds.due_date,
+                "status": ds.status,
                 "client_id": ds.client_id,
                 "table_name": ds.table_name,
                 "filename": ds.filename,
-                "uploaded_at": ds.uploaded_at.isoformat(),
-                "dataset_schema": dataset_schema,  # renamed field for Pydantic safety
-                "meta_info": ds.meta,              # renamed for clarity
+                "assigned_to": ds.assigned_to,
+                "assigned_by": ds.assigned_by,
+                "dataset_schema": dataset_schema, 
+                "meta_info": ds.meta,              
+                "created_at": ds.created_at
             })
 
-        return datasets
+            datasets[ds.project_code]["name"] = ds.project_name.replace("_"," ")
+            datasets[ds.project_code]["client_id"] = ds.client_id
+            datasets[ds.project_code]["project_code"] = ds.project_code
+            datasets[ds.project_code]["due_date"] = ds.due_date
+            datasets[ds.project_code]["assigned_by"] = ds.assigned_by
+            datasets[ds.project_code]["assigned_to"] = ds.assigned_to
+
+        project_meta = db.query(DatasetMeta)
+        if project_meta:
+            for project_code in project_codes:
+                dataset_info = project_meta.filter(DatasetMeta.project_code == project_code).first()
+                datasets[project_code]["dataset_info"] = dataset_info
+
+
+        return {"status": True, "data": datasets}
+
+    except Exception as e:        
+        return {"status": False, "message": f"Error: Could not retreive datasets => Error details: {str(e)}"}
+
     finally:
         db.close()
 
@@ -104,6 +181,63 @@ def get_schema(dataset_id: str):
             dataset_schema = ds.schema
 
         return {"dataset_id": ds.dataset_id, "dataset_schema": dataset_schema}
+    finally:
+        db.close()
+
+@app.get("/datasets/{project_code}")
+def get_project(project_code: str):
+    """Fetch dataset schema for a given dataset ID."""
+    db = SessionLocal()
+    try:
+        q = db.query(Dataset)
+        if project_code:
+            q = q.filter(Dataset.project_code == project_code)
+
+        datasets = {}
+        for qs in q.all():
+            datasets[qs.project_code] = {"datasets": []  } 
+
+        for ds in q.all():
+            dataset_schema = ds.schema
+            try:
+                dataset_schema = json.loads(ds.schema) if isinstance(ds.schema, str) else ds.schema
+            except Exception:
+                dataset_schema = ds.schema
+
+            datasets_record = datasets[ds.project_code]
+            print("START  datasets_record-datasets_record-datasets_record")
+            print(datasets_record)
+            print(ds.filename)
+            print("END datasets_record-datasets_record-datasets_record")
+
+            datasets[ds.project_code]["datasets"].append({
+                "dataset_id": ds.dataset_id,
+                "project_name": ds.project_name.replace("_"," "),
+                "project_code": ds.project_code,
+                "due_date": ds.due_date,
+                "status": ds.status,
+                "client_id": ds.client_id,
+                "table_name": ds.table_name,
+                "filename": ds.filename,
+                "assigned_to": ds.assigned_to,
+                "assigned_by": ds.assigned_by,
+                "dataset_schema": dataset_schema, 
+                "meta_info": ds.meta,              
+                "created_at": ds.created_at
+            })
+
+            datasets[ds.project_code]["name"] = ds.project_name.replace("_"," ")
+            datasets[ds.project_code]["client_id"] = ds.client_id
+            datasets[ds.project_code]["project_code"] = ds.project_code
+            datasets[ds.project_code]["due_date"] = ds.due_date
+            datasets[ds.project_code]["assigned_by"] = ds.assigned_by
+            datasets[ds.project_code]["assigned_to"] = ds.assigned_to
+
+        return {"status": True, "data": datasets}
+
+    except Exception as e:        
+        return {"status": False, "message": f"Error: Could not retreive datasets => Error details: {str(e)}"}
+
     finally:
         db.close()
 

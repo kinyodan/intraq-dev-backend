@@ -56,6 +56,7 @@ app.add_middleware(
         "https://intraqapp.simokai.com",
         "https://intraq.simokai.com",
         "http://localhost:3000",      # For local development
+        "http://localhost:3001",      # For local development
         "http://127.0.0.1:3000",      # For local development
         "https://intraq-ui.vercel.app",
         "https://intraq-dashboard.vercel.app"
@@ -348,7 +349,14 @@ async def login(username: str = Form(...), password: str = Form(...),
     identifier = username.strip().lower()
     user = USERS.get(identifier) or next((u for u in USERS.values() if u["email"] == identifier), None)
     if not user or not pwd_ctx.verify(password, user["password"]):
-        return HTMLResponse("<html><body>Invalid login. <a href='javascript:history.back()'>Back</a></body></html>", status_code=401)
+        return JSONResponse(
+            status_code=401,
+            content={
+                "success": False,
+                "error": "Invalid credentials",
+                "message": "Username or password is incorrect"
+            }
+        )
 
     session_id = secrets.token_urlsafe(32)
     SESSIONS[session_id] = {"user": user, "expires": time.time() + REFRESH_TOKEN_EXPIRE}
@@ -364,11 +372,61 @@ async def login(username: str = Form(...), password: str = Form(...),
     }
 
     q = {"code": code}
-    if state: q["state"] = state
-    dest = redirect_uri + "?" + urllib.parse.urlencode(q)
-    resp = RedirectResponse(dest)
-    resp.set_cookie("auth_session", session_id, httponly=True, secure=True,
-                    samesite="none", domain=".nx.com")  # 🔥 share across apps
+    print("redirect_uri")
+    print(redirect_uri)
+
+    if state: 
+        q["state"] = state
+
+    # Build the redirect URL that frontend will use
+    redirect_url = redirect_uri + "?" + urllib.parse.urlencode(q)
+
+    # Return JSON with all authentication information
+    response_data = {
+        "success": True,
+        "message": "Authentication successful",
+        "redirect_uri": redirect_url,  # The URL frontend should redirect to
+        "auth_data": {
+            "session_id": session_id,
+            # Include any other auth tokens/data
+            "access_token": q.get("access_token", ""),
+            "token_type": q.get("token_type", "bearer"),
+            "expires_in": q.get("expires_in", 3600),
+            "scope": q.get("scope", ""),
+            "state": state
+        },
+        "cookie_config": {
+            "name": "auth_session",
+            "value": session_id,
+            "options": {
+                "httponly": True,
+                "secure": True,
+                "samesite": "none",
+                "domain": ".nx.com",
+                "path": "/",
+                "max_age": 3600  # 1 hour
+            }
+        }
+    }
+
+    # Create JSON response
+    resp = JSONResponse(
+        content=response_data,
+        status_code=200
+    )
+
+    # Still set the cookie on backend response
+    resp.set_cookie(
+        key="auth_session",
+        value=session_id,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        domain=".nx.com",
+        max_age=3600
+    )
+    
+    print(f"Redirect URL for frontend: {redirect_url}")
     return resp
 
 @app.get("/authorize")
@@ -425,6 +483,7 @@ class TokenRequest(BaseModel):
 
 @app.post("/token")
 async def token(req: TokenRequest):
+
     if req.grant_type == "authorization_code":
         code_data = AUTH_CODES.pop(req.code, None)
         if not code_data or code_data["expires_at"] < time.time():
@@ -442,11 +501,13 @@ async def token(req: TokenRequest):
         access = create_token_payload(user, extra={"scope": "openid"}, expires=ACCESS_TOKEN_EXPIRE)
         refresh = secrets.token_urlsafe(48)
         REFRESH_TOKENS[refresh] = {"user": user, "expires": time.time() + REFRESH_TOKEN_EXPIRE}
+        user_data = {"username": user["username"], "client_id": user["client_id"]}
         return {
             "access_token": jwt.encode(access, JWT_SECRET, algorithm=JWT_ALG),
             "token_type": "bearer",
             "expires_in": ACCESS_TOKEN_EXPIRE,
-            "refresh_token": refresh
+            "refresh_token": refresh,
+            "user": user_data
         }
 
     elif req.grant_type == "refresh_token":
@@ -465,7 +526,7 @@ async def token(req: TokenRequest):
             "refresh_token": new_refresh
         }
 
-    raise HTTPException(status_code=400, detail="Unsupported grant_type")
+    raise HTTPException(status_code=400, detail="Unsupported grant_type")  
 
 @app.get("/session")
 async def session(request: Request):

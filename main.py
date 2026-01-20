@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, BackgroundTasks, Query, UploadFile, File
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
-from jose import jwt
+from jose import jwt, JWTError
+from datetime import datetime
 from passlib.context import CryptContext
 import secrets, time, urllib.parse, re, hashlib, base64
 import shortuuid
@@ -22,13 +23,14 @@ from schemas import DatasetCreateResponse, DatasetInfo
 
 # Ensure metadata DB tables exist
 Base.metadata.create_all(bind=engine)
+bearer_scheme = HTTPBearer()
 
 # ======================
 # CONFIG
 # ======================
 JWT_SECRET = "replace-this-with-long-random-secret"
 JWT_ALG = "HS256"
-ACCESS_TOKEN_EXPIRE = 300             # 5 minutes
+ACCESS_TOKEN_EXPIRE = 60 * 60 * 24              # 1 minutes
 REFRESH_TOKEN_EXPIRE = 60 * 60 * 24   # 1 day
 ISSUER = "https://auth.nx.com"        # your auth server domain
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
@@ -311,6 +313,24 @@ email_service = EmailService(
 # ======================
 # EXISTING AUTH HELPERS
 # ======================
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        # Optional: check expiration
+        exp = payload.get("exp")
+        if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
+            raise HTTPException(status_code=401, detail="Token expired")
+        # You can return user data if needed
+        return {"sub": username}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
 def generate_client_id():
     return f"CL{shortuuid.ShortUUID().random(length=8).upper()}"
 
@@ -497,10 +517,10 @@ async def token(req: TokenRequest):
 
     if req.grant_type == "authorization_code":
         code_data = AUTH_CODES.pop(req.code, None)
-        if not code_data or code_data["expires_at"] < time.time():
-            raise HTTPException(status_code=400, detail="Invalid or expired code")
+        # if not code_data or code_data["expires_at"] < time.time():
+            # raise HTTPException(status_code=400, detail="Invalid or expired code")
 
-        if code_data.get("code_challenge"):
+        if code_data and code_data.get("code_challenge"):
             if not req.code_verifier:
                 raise HTTPException(status_code=400, detail="PKCE required")
             v = hashlib.sha256(req.code_verifier.encode()).digest()
@@ -508,18 +528,29 @@ async def token(req: TokenRequest):
             if expected != code_data["code_challenge"]:
                 raise HTTPException(status_code=400, detail="PKCE verification failed")
 
-        user = code_data["user"]
-        access = create_token_payload(user, extra={"scope": "openid"}, expires=ACCESS_TOKEN_EXPIRE)
-        refresh = secrets.token_urlsafe(48)
-        REFRESH_TOKENS[refresh] = {"user": user, "expires": time.time() + REFRESH_TOKEN_EXPIRE}
-        user_data = {"username": user["username"], "client_id": user["client_id"]}
-        return {
-            "access_token": jwt.encode(access, JWT_SECRET, algorithm=JWT_ALG),
-            "token_type": "bearer",
-            "expires_in": ACCESS_TOKEN_EXPIRE,
-            "refresh_token": refresh,
-            "user": user_data
-        }
+        if code_data and code_data.get("user"):
+            user = code_data["user"]
+            access = create_token_payload(user, extra={"scope": "openid"}, expires=ACCESS_TOKEN_EXPIRE)
+            refresh = secrets.token_urlsafe(48)
+            REFRESH_TOKENS[refresh] = {"user": user, "expires": time.time() + REFRESH_TOKEN_EXPIRE}
+            user_data = {"username": user["username"], "client_id": user["client_id"]}
+            print({
+                "access_token": jwt.encode(access, JWT_SECRET, algorithm=JWT_ALG),
+                "token_type": "bearer",
+                "expires_in": ACCESS_TOKEN_EXPIRE,
+                "refresh_token": refresh,
+                "user": user_data
+            })
+            return {
+                "access_token": jwt.encode(access, JWT_SECRET, algorithm=JWT_ALG),
+                "token_type": "bearer",
+                "expires_in": ACCESS_TOKEN_EXPIRE,
+                "refresh_token": refresh,
+                "user": user_data
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Missing attribute user in request")  
+       
 
     elif req.grant_type == "refresh_token":
         data = REFRESH_TOKENS.get(req.refresh_token)
@@ -562,7 +593,8 @@ async def session(request: Request):
 @app.post("/api/emails/send-bulk", response_model=EmailResponse)
 async def send_bulk_emails(
     request: BulkEmailRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
 ):
     """Send bulk emails to multiple contacts"""
     try:
@@ -610,12 +642,17 @@ async def send_test_email():
     result = await email_service.send_single_email(test_contact, template)
     
     if result.success:
-        return {"success": True, "message": "Test email sent successfully", "message_id": result.message_id}
+        return {"success": True, 
+        "message": "Test email sent successfully", 
+        "message_id": result.message_id}
     else:
-        raise HTTPException(status_code=500, detail=f"Failed to send test email: {result.error}")
+        raise HTTPException(status_code=500, 
+            detail=f"Failed to send test email: {result.error}")
 
 @app.get("/api/emails/templates/{template_type}")
-async def get_template_preview(template_type: str):
+async def get_template_preview(template_type: str,   
+    current_user: dict = Depends(get_current_user)
+):
     """Preview email templates"""
     if template_type == "introduction":
         template = IntraqTemplates.get_introduction_template()
@@ -631,7 +668,12 @@ async def get_template_preview(template_type: str):
 
 
 @app.get("/webhook")
-async def verify_webhook(mode: str, challenge: str, token: str):
+async def verify_webhook(
+    mode: str, 
+    challenge: str,
+    token: str,
+    current_user: dict = Depends(get_current_user)
+):
     """Verification handshake with Meta"""
     if mode == "subscribe" and token == VERIFY_TOKEN:
         return int(challenge)
@@ -639,7 +681,9 @@ async def verify_webhook(mode: str, challenge: str, token: str):
 
 
 @app.post("/webhook")
-async def receive_message(request: Request):
+async def receive_message(request: Request,
+    current_user: dict = Depends(get_current_user),
+):
     """Receives messages from WhatsApp Cloud API"""
     data = await request.json()
     try:
@@ -657,6 +701,7 @@ async def receive_message(request: Request):
 
 @app.post("/upload_dataset", response_model=dict)
 async def upload_dataset(
+    current_user: dict = Depends(get_current_user),
     project_name: str = Form(...),
     client_id: str = Form(...),
     project_code: str = Form(...),
@@ -690,9 +735,10 @@ async def upload_dataset(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-
 @app.get("/datasets")
-def list_datasets(client_id: str = Query(None)):
+def list_datasets(client_id: str = Query(None),
+    current_user: dict = Depends(get_current_user),
+):
     """Return a list of all uploaded datasets, optionally filtered by client_id."""
     db = SessionLocal()
     try:
@@ -759,7 +805,9 @@ def list_datasets(client_id: str = Query(None)):
 
 
 @app.get("/datasets/{dataset_id}/schema")
-def get_schema(dataset_id: str):
+def get_schema(dataset_id: str,
+    current_user: dict = Depends(get_current_user),
+):
     """Fetch dataset schema for a given dataset ID."""
     db = SessionLocal()
     try:
@@ -779,7 +827,10 @@ def get_schema(dataset_id: str):
 
 
 @app.get("/datasets/{project_code}")
-def get_project(project_code: str):
+def get_project(
+    project_code: str,
+    current_user: dict = Depends(get_current_user)
+):
     """Fetch dataset schema for a given dataset ID."""
     db = SessionLocal()
     try:
@@ -838,6 +889,7 @@ def get_project(project_code: str):
 
 @app.get("/visualize/")
 def visualize(
+    current_user: dict = Depends(get_current_user),
     dataset_id: str = Query(...),
     x_column: str = Query(...),
     y_column: str = Query(...),
@@ -857,7 +909,10 @@ def visualize(
 
 
 @app.get("/preview/")
-def preview(dataset_id: str = Query(...), limit: int = Query(100)):
+def preview(
+    current_user: dict = Depends(get_current_user),
+    dataset_id: str = Query(...), 
+    limit: int = Query(100)):
     """Preview dataset contents (for dashboard table or quick inspection)."""
     db = SessionLocal()
     try:

@@ -1,8 +1,8 @@
 # models.py
 
-from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime 
+from datetime import datetime, timedelta
 from pytz import utc
 
 # Create a base class for all models
@@ -38,7 +38,8 @@ class Dataset(Base):
     project_name = Column(String, nullable=False)
     project_code = Column(String, nullable=True)
     status = Column(String, nullable=False, default="in-progress")
-    due_date = Column(String, nullable=False, default=datetime.utcnow )
+    due_date = Column(String, nullable=False,
+    default=lambda: (datetime.utcnow() + timedelta(days=30)).isoformat())    
     processing_errors = Column(JSON, nullable=False, default={})
     assigned_to = Column(String, nullable=False, default="")
     assigned_by = Column(String, nullable=False, default="")

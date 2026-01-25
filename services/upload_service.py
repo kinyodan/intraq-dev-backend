@@ -1,17 +1,19 @@
 # services/upload_service.py
-
 import os
 import uuid
 import json
 from utils.file_utils import read_file_bytes
 from db import engine, SessionLocal
-from models import Dataset, DatasetMeta ,Base  # ← Fixed import
+from models import Dataset, DatasetMeta, Base
 import pandas as pd
 import shortuuid
 from sqlalchemy import text
+import cloudinary.uploader
+from config.cloudinary import cloudinary 
 
-UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "./uploads")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# No need for local UPLOAD_FOLDER anymore
+# UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "./uploads")
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def infer_schema(df: pd.DataFrame):
     cols = []
@@ -22,23 +24,20 @@ def infer_schema(df: pd.DataFrame):
 def save_dataframe_as_table(df: pd.DataFrame, table_name: str):
     """Save DataFrame as a table in the database"""
     print(f"💾 Attempting to save DataFrame to table: {table_name}")
-    print(f"   Shape: {df.shape[0]} rows, {df.shape[1]} columns")
-    print(f"   Columns: {list(df.columns)}")
-    
+    print(f" Shape: {df.shape[0]} rows, {df.shape[1]} columns")
+    print(f" Columns: {list(df.columns)}")
+   
     try:
-        # Test connection first
         with engine.connect() as conn:
             print("✅ Database connection test passed")
-        
-        # Try to save
+       
         df.to_sql(table_name, engine, index=False, if_exists='replace')
         print(f"✅ Successfully saved to table: {table_name}")
-        
-        # Verify
+       
         with engine.connect() as conn:
             count = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
             print(f"✅ Verified: {count} rows in table")
-            
+           
     except Exception as e:
         print(f"❌ Error in save_dataframe_as_table: {e}")
         raise
@@ -46,20 +45,19 @@ def save_dataframe_as_table(df: pd.DataFrame, table_name: str):
 def store_metadata(
     project_name: str ,
     project_code: str,
-    client_id: str, 
+    client_id: str,
     dataset_id: str,
     processing_errors,
-    table_name: str, 
-    filename: str, 
+    table_name: str,
+    filename: str,
     schema,
-    row_count, 
+    row_count,
     assigned_to=None,
     assigned_by=None,
     meta=None):
-
+    # (your existing code – no changes needed here)
     db = SessionLocal()
     try:
-
         ds = Dataset(
             client_id=client_id,
             project_name=project_name.lower().replace(" ", "_"),
@@ -75,43 +73,27 @@ def store_metadata(
         db.add(ds)
         db.commit()
         db.refresh(ds)
-
-        # Update or create datasetmeta 
-        project_meta = db.query(DatasetMeta)
+        
+        # Update or create datasetmeta (your existing logic)
+        project_meta = db.query(DatasetMeta).filter(DatasetMeta.project_code == project_code).first()
         if project_meta:
-            project_meta = project_meta.filter(DatasetMeta.project_code == project_code).first()
-
-            if meta:
-                if project_meta:
-                    project_meta.project_total_rows = project_meta.project_total_rows + row_count
-                    ds_meta = DatasetMeta(
-                        project_total_rows=project_meta.project_total_rows,
-                        project_total_errors= project_meta.project_total_errors)
-
-                    db.add(ds_meta)
-                    db.commit()
-                    db.refresh(ds_meta)
-                    print(ds_meta)
-
-                else:    
-                    ds_meta = DatasetMeta(
-                        project_code = project_code,
-                        project_total_rows=row_count,
-                        project_total_errors= 0)
-
-                    db.add(ds_meta)
-                    db.commit()
-                    db.refresh(ds_meta)
-                    print(ds_meta)
-
+            project_meta.project_total_rows = project_meta.project_total_rows + row_count
+            db.commit()
+        else:
+            ds_meta = DatasetMeta(
+                project_code = project_code,
+                project_total_rows=row_count,
+                project_total_errors=0)
+            db.add(ds_meta)
+            db.commit()
+            db.refresh(ds_meta)
         return ds
-
     finally:
-        db.close()  # Or use SessionLocal.remove() if using scoped_session
+        db.close()
 
 def handle_upload(
-    file_obj, 
-    filename: str, 
+    file_obj,           # bytes
+    filename: str,
     project_name: str,
     assigned_to: str,
     assigned_by: str,
@@ -123,39 +105,54 @@ def handle_upload(
     Returns dataset metadata
     """
     print(f"📁 handle_upload called for: {filename}")
-    
+   
     try:
         content = file_obj
         df = read_file_bytes(filename, content)
         print(f"✅ DataFrame loaded: {df.shape}")
-        
+       
         if df.empty:
-            print("⚠️  Warning: DataFrame is empty!")
+            print("⚠️ Warning: DataFrame is empty!")
             return {"error": "Empty dataframe", "filename": filename}
-        
+       
         # Clean column names
         df.columns = [str(c).strip() for c in df.columns]
-
         dataset_id = str(uuid.uuid4())
         table_name = f"client_{client_id}_data_{dataset_id.replace('-', '_')}"
-        
+       
         print(f"📝 Dataset ID: {dataset_id}")
-        print(f"🗄️  Table name: {table_name}")
+        print(f"🗄️ Table name: {table_name}")
 
-        # Save file locally
-        path = os.path.join(UPLOAD_FOLDER, f"{dataset_id}_{filename}")
-        with open(path, "wb") as f:
-            f.write(content)
-        print(f"💾 File saved locally: {path}")
+        # ───────────────────────────────────────
+        # UPLOAD TO CLOUDINARY INSTEAD OF LOCAL DISK
+        # ───────────────────────────────────────
+        print("☁️ Uploading file to Cloudinary...")
+        
+        # Optional: organize in folder (e.g. intraq-uploads/client_xxx/dataset_id)
+        folder_path = f"intraq-uploads/client_{client_id}/{dataset_id}"
+        
+        upload_result = cloudinary.uploader.upload(
+            file_obj,                       # bytes directly
+            resource_type="auto",           # auto-detect (image/raw/etc.)
+            public_id=f"{dataset_id}_{filename.split('.')[0]}",  # unique name
+            folder=folder_path,             # optional folder structure
+            overwrite=True                  # overwrite if exists
+        )
+        
+        cloudinary_url = upload_result['secure_url']
+        cloudinary_public_id = upload_result['public_id']
+        
+        print(f"✅ File uploaded to Cloudinary: {cloudinary_url}")
+        print(f"Public ID: {cloudinary_public_id}")
 
-        # Save data to DB
+        # Save data to DB (same as before)
         print("💿 Saving to database...")
         save_dataframe_as_table(df, table_name)
 
         # Infer schema
         schema = infer_schema(df)
 
-        # Save metadata
+        # Save metadata – now you can store Cloudinary URL instead of local path
         ds = store_metadata(
             client_id=client_id,
             project_name=project_name,
@@ -167,12 +164,16 @@ def handle_upload(
             table_name=table_name,
             filename=filename,
             schema=schema,
-            row_count= len(df),
-            meta={"rows": len(df)}
+            row_count=len(df),
+            meta={
+                "rows": len(df),
+                "cloudinary_url": cloudinary_url,        # ← save this!
+                "cloudinary_public_id": cloudinary_public_id
+            }
         )
 
         print(f"✅ handle_upload completed successfully")
-        
+       
         return {
             "dataset_id": dataset_id,
             "project_name": project_name,
@@ -183,9 +184,10 @@ def handle_upload(
             "table_name": table_name,
             "filename": filename,
             "rows": len(df),
-            "schema": schema
+            "schema": schema,
+            "cloudinary_url": cloudinary_url  # return to frontend if needed
         }
-        
+       
     except Exception as e:
         print(f"❌ Error in handle_upload: {e}")
         import traceback

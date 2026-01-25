@@ -99,13 +99,14 @@ def get_db():
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://intraqapp.simokai.com",
-        "https://intraq.simokai.com",
         "http://localhost:3000",      # For local development
         "http://localhost:3001",      # For local development
         "http://127.0.0.1:3000",      # For local development
+        "https://intraqapp.simokai.com",
+        "https://intraq.simokai.com",
         "https://intraq-ui.vercel.app",
-        "https://intraq-dashboard.vercel.app"
+        "https://intraq-dashboard.vercel.app",
+        "https://dashboard.intraq.simokai.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],

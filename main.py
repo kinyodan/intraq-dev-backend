@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, BackgroundTasks, Query, UploadFile, File
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
-from jose import jwt
+from jose import jwt, JWTError
+from datetime import datetime
 from passlib.context import CryptContext
 import secrets, time, urllib.parse, re, hashlib, base64
 import shortuuid
@@ -16,19 +17,45 @@ import json
 from services.onboarding_service import process_onboarding
 from services.upload_service import handle_upload
 from services.visualization_service import aggregate_for_chart, fetch_table_preview
-from db import SessionLocal, engine
-from models import Base, Dataset, DatasetMeta
+from db import SessionLocal, engine, DATABASE_URL
+from models import Base, UserSession, AuthCode, User, Dataset, DatasetMeta
 from schemas import DatasetCreateResponse, DatasetInfo
+from sqlalchemy.orm import Session
+import uuid  # or your generate_client_id()
+from celery import Celery
+
+app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
+REDIS_URL = os.getenv("REDIS_URL","redis://localhost:6379/0")
+
+celery_app = Celery(
+    'tasks',
+    broker=REDIS_URL,  # Message broker
+    backend=REDIS_URL,  # Result backend
+    broker_connection_retry_on_startup=True
+)
+
+# Optional: Configure Celery settings
+celery_app.conf.update(
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True,
+    task_track_started=True,
+    task_time_limit=30 * 60,  # 30 minutes
+    task_soft_time_limit=25 * 60,
+)
 
 # Ensure metadata DB tables exist
 Base.metadata.create_all(bind=engine)
+bearer_scheme = HTTPBearer()
 
 # ======================
 # CONFIG
 # ======================
 JWT_SECRET = "replace-this-with-long-random-secret"
 JWT_ALG = "HS256"
-ACCESS_TOKEN_EXPIRE = 300             # 5 minutes
+ACCESS_TOKEN_EXPIRE = 60 * 60 * 24              # 1 minutes
 REFRESH_TOKEN_EXPIRE = 60 * 60 * 24   # 1 day
 ISSUER = "https://auth.nx.com"        # your auth server domain
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
@@ -57,8 +84,16 @@ REFRESH_TOKENS = {}
 # Initialize Resend
 resend.api_key = os.getenv("RESEND_API_KEY", "re_ERQvhkZw_HyaFrLm1Fir7xLvw9PpazyQr")
 
+# Assume pwd_ctx is your password hasher (e.g., passlib)
+from passlib.context import CryptContext
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # Add CORS middleware
 app.add_middleware(
@@ -311,13 +346,31 @@ email_service = EmailService(
 # ======================
 # EXISTING AUTH HELPERS
 # ======================
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        # Optional: check expiration
+        exp = payload.get("exp")
+        if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
+            raise HTTPException(status_code=401, detail="Token expired")
+        # You can return user data if needed
+        return {"sub": username}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
 def generate_client_id():
     return f"CL{shortuuid.ShortUUID().random(length=8).upper()}"
 
 def create_token_payload(user, extra=None, expires=ACCESS_TOKEN_EXPIRE):
     iat = int(time.time())
     exp = iat + expires
-    payload = {"iss": ISSUER, "sub": user["sub"], "iat": iat, "exp": exp}
+    payload = {"iss": ISSUER, "sub": user.sub, "iat": iat, "exp": exp}
     if extra: payload.update(extra)
     return payload
 
@@ -326,40 +379,147 @@ def create_jwt(payload, expires_in=ACCESS_TOKEN_EXPIRE):
     exp = iat + expires_in
     data = {"iss": ISSUER, "iat": iat, "exp": exp, **payload}
     return jwt.encode(data, JWT_SECRET, algorithm=JWT_ALG)
+class TokenRequest(BaseModel):
+    grant_type: str
+    code: str = None
+    redirect_uri: str = None
+    client_id: str = None
+    code_verifier: str = None
+    refresh_token: str = None
 
 # ======================
 # EXISTING AUTH ENDPOINTS
 # ======================
+
+@app.post("/token")
+async def token(req: TokenRequest, db: Session = Depends(get_db)):
+
+    if req.grant_type == "authorization_code":
+        
+        # Find authorization code  
+        code_data = db.query(AuthCode).filter(
+            (AuthCode.code == req.code)
+        ).first()
+
+        # code_data = AUTH_CODES.pop(req.code, None)
+        # if not code_data or code_data["expires_at"] < time.time():
+            # raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+        if code_data and code_data.code_challenge:
+            if not req.code_verifier:
+                raise HTTPException(status_code=400, detail="PKCE required")
+            v = hashlib.sha256(req.code_verifier.encode()).digest()
+            expected = base64.urlsafe_b64encode(v).rstrip(b"=").decode()
+            if expected != code_data.code_challenge:
+                raise HTTPException(status_code=400, detail="PKCE verification failed")
+
+        if code_data and code_data.user_id:
+            user = db.query(User).filter((User.id == code_data.user_id)).first()
+            access = create_token_payload(user, extra={"scope": "openid"}, expires=ACCESS_TOKEN_EXPIRE)
+            refresh = secrets.token_urlsafe(48)
+            REFRESH_TOKENS[refresh] = {"user": user, "expires": time.time() + REFRESH_TOKEN_EXPIRE}
+            user_data = {"username": user.username, "client_id": user.client_id}
+
+            return {
+                "access_token": jwt.encode(access, JWT_SECRET, algorithm=JWT_ALG),
+                "token_type": "bearer",
+                "expires_in": ACCESS_TOKEN_EXPIRE,
+                "refresh_token": refresh,
+                "user": user_data
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Missing attribute user in request")  
+       
+
+    elif req.grant_type == "refresh_token":
+        data = REFRESH_TOKENS.get(req.refresh_token)
+        if not data or data["expires"] < time.time():
+            raise HTTPException(status_code=400, detail="Invalid refresh token")
+        user = data["user"]
+        access = create_token_payload(user, extra={"scope": "openid"}, expires=ACCESS_TOKEN_EXPIRE)
+        new_refresh = secrets.token_urlsafe(48)
+        REFRESH_TOKENS[new_refresh] = {"user": user, "expires": time.time() + REFRESH_TOKEN_EXPIRE}
+        del REFRESH_TOKENS[req.refresh_token]
+        return {
+            "access_token": jwt.encode(access, JWT_SECRET, algorithm=JWT_ALG),
+            "token_type": "bearer",
+            "expires_in": ACCESS_TOKEN_EXPIRE,
+            "refresh_token": new_refresh
+        }
+
+    raise HTTPException(status_code=400, detail="Unsupported grant_type")  
+
+@app.get("/session")
+async def session(request: Request):
+    """If a valid session cookie exists, issue a short-lived access token."""
+    session_id = request.cookies.get("auth_session")
+    if not session_id or session_id not in SESSIONS:
+        raise HTTPException(status_code=401, detail="No active session")
+
+    sess = SESSIONS[session_id]
+    if sess["expires"] < time.time():
+        del SESSIONS[session_id]
+        raise HTTPException(status_code=401, detail="Session expired")
+
+    user = sess["user"]
+    access = create_token_payload(user, extra={"scope": "openid"}, expires=ACCESS_TOKEN_EXPIRE)
+    token = jwt.encode(access, JWT_SECRET, algorithm=JWT_ALG)
+    return {"access_token": token, "user": {"username": user["username"], "email": user["email"]}}
+
 @app.post("/signup")
-async def signup(username: str = Form(...), password: str = Form(...), email: str = Form(...)):
-    if username in USERS or any(u["email"].lower() == email.lower() for u in USERS.values()):
+async def signup(
+    username: str = Form(...),
+    password: str = Form(...),
+    email: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    # Check existing user
+    existing_user = db.query(User).filter(
+        (User.username == username) | (User.email == email.lower())
+    ).first()
+    if existing_user:
         raise HTTPException(status_code=400, detail="Username or email already exists")
 
-    client_id = generate_client_id()
+    client_id = generate_client_id()  # Your function
+    sub = f"user-{db.query(User).count() + 1}"  # Or use uuid.uuid4()
 
-    USERS[username] = {
-        "username": username,
-        "password": pwd_ctx.hash(password),
-        "sub": f"user-{len(USERS) + 1}",
-        "email": email.lower(),
-        "client_id": client_id,
-    }
+    new_user = User(
+        username=username,
+        email=email.lower(),
+        password=pwd_ctx.hash(password),
+        client_id=client_id,
+        sub=sub
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
 
     return {
-        "message": "User created successfully", 
-        "username": username, 
+        "message": "User created successfully",
+        "username": username,
         "email": email,
         "client_id": client_id
     }
 
 @app.post("/login")
-async def login(username: str = Form(...), password: str = Form(...),
-                client_id: str = Form(None), redirect_uri: str = Form(None),
-                state: str = Form(None), code_challenge: str = Form(None),
-                code_challenge_method: str = Form(None)):
+async def login(
+    username: str = Form(...),
+    password: str = Form(...),
+    client_id: str = Form(None),
+    redirect_uri: str = Form(None),
+    state: str = Form(None),
+    code_challenge: str = Form(None),
+    code_challenge_method: str = Form(None),
+    db: Session = Depends(get_db)
+):
     identifier = username.strip().lower()
-    user = USERS.get(identifier) or next((u for u in USERS.values() if u["email"] == identifier), None)
-    if not user or not pwd_ctx.verify(password, user["password"]):
+    
+    # Find user by username OR email
+    user = db.query(User).filter(
+        (User.username == identifier) | (User.email == identifier)
+    ).first()
+    
+    if not user or not pwd_ctx.verify(password, user.password):
         return JSONResponse(
             status_code=401,
             content={
@@ -369,41 +529,53 @@ async def login(username: str = Form(...), password: str = Form(...),
             }
         )
 
+    # Generate session
     session_id = secrets.token_urlsafe(32)
-    SESSIONS[session_id] = {"user": user, "expires": time.time() + REFRESH_TOKEN_EXPIRE}
+    expires = time.time() + 3600  # 1 hour (adjust as needed)
+    
+    new_session = UserSession(
+        session_id=session_id,
+        user_id=user.id,
+        expires_at=datetime.utcfromtimestamp(expires)
+    )
+    db.add(new_session)
 
+    # Generate auth code for OAuth-like flow
     code = secrets.token_urlsafe(32)
-    AUTH_CODES[code] = {
-        "client_id": client_id,
-        "redirect_uri": redirect_uri,
-        "code_challenge": code_challenge,
-        "code_challenge_method": code_challenge_method,
-        "user": user,
-        "expires_at": time.time() + 300
-    }
+    auth_expires = time.time() + 300  # 5 minutes
+    
+    new_auth_code = AuthCode(
+        code=code,
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        code_challenge=code_challenge,
+        code_challenge_method=code_challenge_method,
+        user_id=user.id,
+        expires_at=datetime.utcfromtimestamp(auth_expires)
+    )
+    db.add(new_auth_code)
+    
+    db.commit()
 
+    # Build query params for redirect
     q = {"code": code}
-    print("redirect_uri")
-    print(redirect_uri)
-
-    if state: 
+    if state:
         q["state"] = state
 
     # Build the redirect URL that frontend will use
-    redirect_url = redirect_uri + "?" + urllib.parse.urlencode(q)
+    redirect_url = f"{redirect_uri}?{urllib.parse.urlencode(q)}" if redirect_uri else None
 
-    # Return JSON with all authentication information
+    # Prepare response data
     response_data = {
         "success": True,
         "message": "Authentication successful",
         "redirect_uri": redirect_url,  # The URL frontend should redirect to
         "auth_data": {
             "session_id": session_id,
-            # Include any other auth tokens/data
-            "access_token": q.get("access_token", ""),
-            "token_type": q.get("token_type", "bearer"),
-            "expires_in": q.get("expires_in", 3600),
-            "scope": q.get("scope", ""),
+            "access_token": "",  # if you generate JWT later, put here
+            "token_type": "bearer",
+            "expires_in": 3600,
+            "scope": "",
             "state": state
         },
         "cookie_config": {
@@ -426,7 +598,7 @@ async def login(username: str = Form(...), password: str = Form(...),
         status_code=200
     )
 
-    # Still set the cookie on backend response
+    # Set cookie on backend response
     resp.set_cookie(
         key="auth_session",
         value=session_id,
@@ -436,7 +608,7 @@ async def login(username: str = Form(...), password: str = Form(...),
         domain=".nx.com",
         max_age=3600
     )
-    
+   
     print(f"Redirect URL for frontend: {redirect_url}")
     return resp
 
@@ -484,77 +656,6 @@ async def authorize(request: Request, response_type: str, client_id: str, redire
     """
     return HTMLResponse(html)
 
-class TokenRequest(BaseModel):
-    grant_type: str
-    code: str = None
-    redirect_uri: str = None
-    client_id: str = None
-    code_verifier: str = None
-    refresh_token: str = None
-
-@app.post("/token")
-async def token(req: TokenRequest):
-
-    if req.grant_type == "authorization_code":
-        code_data = AUTH_CODES.pop(req.code, None)
-        if not code_data or code_data["expires_at"] < time.time():
-            raise HTTPException(status_code=400, detail="Invalid or expired code")
-
-        if code_data.get("code_challenge"):
-            if not req.code_verifier:
-                raise HTTPException(status_code=400, detail="PKCE required")
-            v = hashlib.sha256(req.code_verifier.encode()).digest()
-            expected = base64.urlsafe_b64encode(v).rstrip(b"=").decode()
-            if expected != code_data["code_challenge"]:
-                raise HTTPException(status_code=400, detail="PKCE verification failed")
-
-        user = code_data["user"]
-        access = create_token_payload(user, extra={"scope": "openid"}, expires=ACCESS_TOKEN_EXPIRE)
-        refresh = secrets.token_urlsafe(48)
-        REFRESH_TOKENS[refresh] = {"user": user, "expires": time.time() + REFRESH_TOKEN_EXPIRE}
-        user_data = {"username": user["username"], "client_id": user["client_id"]}
-        return {
-            "access_token": jwt.encode(access, JWT_SECRET, algorithm=JWT_ALG),
-            "token_type": "bearer",
-            "expires_in": ACCESS_TOKEN_EXPIRE,
-            "refresh_token": refresh,
-            "user": user_data
-        }
-
-    elif req.grant_type == "refresh_token":
-        data = REFRESH_TOKENS.get(req.refresh_token)
-        if not data or data["expires"] < time.time():
-            raise HTTPException(status_code=400, detail="Invalid refresh token")
-        user = data["user"]
-        access = create_token_payload(user, extra={"scope": "openid"}, expires=ACCESS_TOKEN_EXPIRE)
-        new_refresh = secrets.token_urlsafe(48)
-        REFRESH_TOKENS[new_refresh] = {"user": user, "expires": time.time() + REFRESH_TOKEN_EXPIRE}
-        del REFRESH_TOKENS[req.refresh_token]
-        return {
-            "access_token": jwt.encode(access, JWT_SECRET, algorithm=JWT_ALG),
-            "token_type": "bearer",
-            "expires_in": ACCESS_TOKEN_EXPIRE,
-            "refresh_token": new_refresh
-        }
-
-    raise HTTPException(status_code=400, detail="Unsupported grant_type")  
-
-@app.get("/session")
-async def session(request: Request):
-    """If a valid session cookie exists, issue a short-lived access token."""
-    session_id = request.cookies.get("auth_session")
-    if not session_id or session_id not in SESSIONS:
-        raise HTTPException(status_code=401, detail="No active session")
-
-    sess = SESSIONS[session_id]
-    if sess["expires"] < time.time():
-        del SESSIONS[session_id]
-        raise HTTPException(status_code=401, detail="Session expired")
-
-    user = sess["user"]
-    access = create_token_payload(user, extra={"scope": "openid"}, expires=ACCESS_TOKEN_EXPIRE)
-    token = jwt.encode(access, JWT_SECRET, algorithm=JWT_ALG)
-    return {"access_token": token, "user": {"username": user["username"], "email": user["email"]}}
 
 # ======================
 # NEW EMAIL ENDPOINTS
@@ -562,7 +663,8 @@ async def session(request: Request):
 @app.post("/api/emails/send-bulk", response_model=EmailResponse)
 async def send_bulk_emails(
     request: BulkEmailRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
 ):
     """Send bulk emails to multiple contacts"""
     try:
@@ -610,12 +712,17 @@ async def send_test_email():
     result = await email_service.send_single_email(test_contact, template)
     
     if result.success:
-        return {"success": True, "message": "Test email sent successfully", "message_id": result.message_id}
+        return {"success": True, 
+        "message": "Test email sent successfully", 
+        "message_id": result.message_id}
     else:
-        raise HTTPException(status_code=500, detail=f"Failed to send test email: {result.error}")
+        raise HTTPException(status_code=500, 
+            detail=f"Failed to send test email: {result.error}")
 
 @app.get("/api/emails/templates/{template_type}")
-async def get_template_preview(template_type: str):
+async def get_template_preview(template_type: str,   
+    current_user: dict = Depends(get_current_user)
+):
     """Preview email templates"""
     if template_type == "introduction":
         template = IntraqTemplates.get_introduction_template()
@@ -629,9 +736,13 @@ async def get_template_preview(template_type: str):
         "html_content": template.html_content
     }
 
-
 @app.get("/webhook")
-async def verify_webhook(mode: str, challenge: str, token: str):
+async def verify_webhook(
+    mode: str, 
+    challenge: str,
+    token: str,
+    current_user: dict = Depends(get_current_user)
+):
     """Verification handshake with Meta"""
     if mode == "subscribe" and token == VERIFY_TOKEN:
         return int(challenge)
@@ -639,7 +750,9 @@ async def verify_webhook(mode: str, challenge: str, token: str):
 
 
 @app.post("/webhook")
-async def receive_message(request: Request):
+async def receive_message(request: Request,
+    current_user: dict = Depends(get_current_user),
+):
     """Receives messages from WhatsApp Cloud API"""
     data = await request.json()
     try:
@@ -654,47 +767,110 @@ async def receive_message(request: Request):
         print("Webhook error:", e)
     return {"status": "ok"}
 
-
-@app.post("/upload_dataset", response_model=dict)
-async def upload_dataset(
-    project_name: str = Form(...),
-    client_id: str = Form(...),
-    project_code: str = Form(...),
-    file: UploadFile = File(...),
-    assigned_to: str = Form(...), 
-    assigned_by: str = Form(...), 
+@celery_app.task(bind=True, max_retries=3)
+def run_upload_task(
+    self,
+    file_content, 
+    filename: str, 
+    project_name: str,
+    assigned_to: str,
+    assigned_by: str,
+    client_id: str,
+    project_code=False,
+    processing_errors={}
     ):
-    print(project_name)
-    print(client_id)
-    print(project_code)
-    print(UploadFile)
-
-
-    if project_code == "null":
-        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
-
-    """Upload a dataset file (Excel, CSV, etc.) and register metadata."""
-    content = await file.read()
+    
+    print("=" * 50)
+    print(f"🚀 CELERY TASK STARTED: {filename}")
+    print(f"📦 File size: {len(file_content)} bytes")
+    print(f"🏢 Project: {project_name}")
+    print(f"👤 Client: {client_id}")
+    print(f"🎯 Task ID: {self.request.id}")
+    print("=" * 50)
+    
     try:
+        
+        # Call your function
         result = handle_upload(
-            content, 
-            file.filename, 
+            file_content, 
+            filename, 
             project_name,
             assigned_to,
             assigned_by,
             client_id,
             project_code,
-            {})
-        return JSONResponse(status_code=201, content=result)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+            processing_errors or {}
+        )
+        
+        print(f"✅ Task completed successfully!")
+        print(f"📊 Result: {result}")
+        print("=" * 50)
+        
+        return result
+        
+    except Exception as exc:
+        print(f"❌ Task failed: {exc}")
+        import traceback
+        traceback.print_exc()
+        
+        # Retry with exponential backoff
+        self.retry(exc=exc, countdown=2 ** self.request.retries)
 
 
+@app.post("/upload_dataset", response_model=dict)
+async def upload_dataset(
+    current_user: dict = Depends(get_current_user),
+    project_name: str = Form(...),
+    client_id: str = Form(...),
+    project_code: str = Form(...),
+    files: List[UploadFile] = File(...),
+    assigned_to: str = Form(...), 
+    assigned_by: str = Form(...), 
+    ):
+
+    print(project_name)
+    print(client_id)
+    print(project_code)
+    print(f"Uploading {len(files)} files")
+
+    if project_code == "null":
+        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+
+    task_ids = []
+    
+    for file in files:
+        print(file.filename)
+        content = await file.read()  # Get bytes
+        
+        # CORRECT - Use .delay() or .apply_async()
+        task = run_upload_task.delay(
+            file_content=content,  # Pass bytes
+            filename=file.filename, 
+            project_name=project_name,
+            assigned_to=assigned_to,
+            assigned_by=assigned_by,
+            client_id=client_id,
+            project_code=project_code,
+            processing_errors={}
+        )
+        
+        task_ids.append(task.id)
+    
+    return JSONResponse(
+        status_code=202,  # 202 Accepted (not 201)
+        content={
+            "message": f"Processing {len(files)} files in background",
+            "task_ids": task_ids,
+            "project_code": project_code
+        }
+    )
 
 @app.get("/datasets")
-def list_datasets(client_id: str = Query(None)):
+def list_datasets(client_id: str = Query(None),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Return a list of all uploaded datasets, optionally filtered by client_id."""
-    db = SessionLocal()
     try:
 
         q = db.query(Dataset)
@@ -759,9 +935,11 @@ def list_datasets(client_id: str = Query(None)):
 
 
 @app.get("/datasets/{dataset_id}/schema")
-def get_schema(dataset_id: str):
+def get_schema(dataset_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Fetch dataset schema for a given dataset ID."""
-    db = SessionLocal()
     try:
         ds = db.query(Dataset).filter(Dataset.dataset_id == dataset_id).first()
         if not ds:
@@ -779,9 +957,12 @@ def get_schema(dataset_id: str):
 
 
 @app.get("/datasets/{project_code}")
-def get_project(project_code: str):
+def get_project(
+    project_code: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Fetch dataset schema for a given dataset ID."""
-    db = SessionLocal()
     try:
         q = db.query(Dataset)
         if project_code:
@@ -838,13 +1019,14 @@ def get_project(project_code: str):
 
 @app.get("/visualize/")
 def visualize(
+    current_user: dict = Depends(get_current_user),
     dataset_id: str = Query(...),
     x_column: str = Query(...),
     y_column: str = Query(...),
-    agg: str = Query("sum")
+    agg: str = Query("sum"),
+    db: Session = Depends(get_db)
 ):
     """Perform a simple aggregation for visualization (e.g., bar chart data)."""
-    db = SessionLocal()
     try:
         ds = db.query(Dataset).filter(Dataset.dataset_id == dataset_id).first()
         if not ds:
@@ -857,9 +1039,13 @@ def visualize(
 
 
 @app.get("/preview/")
-def preview(dataset_id: str = Query(...), limit: int = Query(100)):
+def preview(
+    current_user: dict = Depends(get_current_user),
+    dataset_id: str = Query(...), 
+    limit: int = Query(100),
+    db: Session = Depends(get_db)
+    ):
     """Preview dataset contents (for dashboard table or quick inspection)."""
-    db = SessionLocal()
     try:
         ds = db.query(Dataset).filter(Dataset.dataset_id == dataset_id).first()
         if not ds:

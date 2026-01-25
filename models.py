@@ -1,10 +1,10 @@
 # models.py
 
-from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime, func,ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime 
+from datetime import datetime, timedelta
 from pytz import utc
-
+from sqlalchemy.orm import relationship  
 # Create a base class for all models
 Base = declarative_base()
 
@@ -38,7 +38,8 @@ class Dataset(Base):
     project_name = Column(String, nullable=False)
     project_code = Column(String, nullable=True)
     status = Column(String, nullable=False, default="in-progress")
-    due_date = Column(String, nullable=False, default=datetime.utcnow )
+    due_date = Column(String, nullable=False,
+    default=lambda: (datetime.utcnow() + timedelta(days=30)).isoformat())    
     processing_errors = Column(JSON, nullable=False, default={})
     assigned_to = Column(String, nullable=False, default="")
     assigned_by = Column(String, nullable=False, default="")
@@ -60,3 +61,52 @@ class DatasetMeta(Base):
     project_errors = Column(JSON, nullable=True, default={})
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+class User(Base):
+    """
+    Represents a user in the system.
+    Used for authentication and signup.
+    """
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    password = Column(String, nullable=False)  # Hashed password
+    client_id = Column(String, unique=True, nullable=False, index=True)  # Generated client ID
+    sub = Column(String, unique=True, nullable=False)  # e.g., "user-1"
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships (optional - add if needed later)
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    auth_codes = relationship("AuthCode", back_populates="user", cascade="all, delete-orphan")
+
+
+class UserSession(Base):
+    """Stores active user sessions (replaces SESSIONS dict)"""
+    __tablename__ = "user_sessions"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(64), unique=True, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    
+    user = relationship("User", back_populates="sessions")
+
+class AuthCode(Base):
+    """Stores temporary authorization codes (replaces AUTH_CODES dict)"""
+    __tablename__ = "auth_codes"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(64), unique=True, nullable=False, index=True)
+    client_id = Column(String, nullable=True)
+    redirect_uri = Column(String, nullable=True)
+    code_challenge = Column(String, nullable=True)
+    code_challenge_method = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    
+    user = relationship("User", back_populates="auth_codes")

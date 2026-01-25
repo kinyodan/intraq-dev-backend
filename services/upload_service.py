@@ -8,6 +8,7 @@ from db import engine, SessionLocal
 from models import Dataset, DatasetMeta ,Base  # ← Fixed import
 import pandas as pd
 import shortuuid
+from sqlalchemy import text
 
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "./uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -20,7 +21,27 @@ def infer_schema(df: pd.DataFrame):
 
 def save_dataframe_as_table(df: pd.DataFrame, table_name: str):
     """Save DataFrame as a table in the database"""
-    df.to_sql(table_name, engine, index=False, if_exists='replace')
+    print(f"💾 Attempting to save DataFrame to table: {table_name}")
+    print(f"   Shape: {df.shape[0]} rows, {df.shape[1]} columns")
+    print(f"   Columns: {list(df.columns)}")
+    
+    try:
+        # Test connection first
+        with engine.connect() as conn:
+            print("✅ Database connection test passed")
+        
+        # Try to save
+        df.to_sql(table_name, engine, index=False, if_exists='replace')
+        print(f"✅ Successfully saved to table: {table_name}")
+        
+        # Verify
+        with engine.connect() as conn:
+            count = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
+            print(f"✅ Verified: {count} rows in table")
+            
+    except Exception as e:
+        print(f"❌ Error in save_dataframe_as_table: {e}")
+        raise
 
 def store_metadata(
     project_name: str ,
@@ -101,52 +122,72 @@ def handle_upload(
     file_obj: bytes
     Returns dataset metadata
     """
-    content = file_obj
-    df = read_file_bytes(filename, content)
+    print(f"📁 handle_upload called for: {filename}")
+    
+    try:
+        content = file_obj
+        df = read_file_bytes(filename, content)
+        print(f"✅ DataFrame loaded: {df.shape}")
+        
+        if df.empty:
+            print("⚠️  Warning: DataFrame is empty!")
+            return {"error": "Empty dataframe", "filename": filename}
+        
+        # Clean column names
+        df.columns = [str(c).strip() for c in df.columns]
 
-    # Clean column names
-    df.columns = [str(c).strip() for c in df.columns]
+        dataset_id = str(uuid.uuid4())
+        table_name = f"client_{client_id}_data_{dataset_id.replace('-', '_')}"
+        
+        print(f"📝 Dataset ID: {dataset_id}")
+        print(f"🗄️  Table name: {table_name}")
 
-    dataset_id = str(uuid.uuid4())
-    table_name = f"client_{client_id}_data_{dataset_id.replace('-', '_')}"
+        # Save file locally
+        path = os.path.join(UPLOAD_FOLDER, f"{dataset_id}_{filename}")
+        with open(path, "wb") as f:
+            f.write(content)
+        print(f"💾 File saved locally: {path}")
 
+        # Save data to DB
+        print("💿 Saving to database...")
+        save_dataframe_as_table(df, table_name)
 
-    # Save file locally
-    path = os.path.join(UPLOAD_FOLDER, f"{dataset_id}_{filename}")
-    with open(path, "wb") as f:
-        f.write(content)
+        # Infer schema
+        schema = infer_schema(df)
 
-    # Save data to DB
-    save_dataframe_as_table(df, table_name)
+        # Save metadata
+        ds = store_metadata(
+            client_id=client_id,
+            project_name=project_name,
+            project_code=project_code,
+            processing_errors=processing_errors,
+            assigned_to=assigned_to,
+            assigned_by=assigned_by,
+            dataset_id=dataset_id,
+            table_name=table_name,
+            filename=filename,
+            schema=schema,
+            row_count= len(df),
+            meta={"rows": len(df)}
+        )
 
-    # Infer schema
-    schema = infer_schema(df)
-
-    # Save metadata
-    ds = store_metadata(
-        client_id=client_id,
-        project_name=project_name,
-        project_code=project_code,
-        processing_errors=processing_errors,
-        assigned_to=assigned_to,
-        assigned_by=assigned_by,
-        dataset_id=dataset_id,
-        table_name=table_name,
-        filename=filename,
-        schema=schema,
-        row_count= len(df),
-        meta={"rows": len(df)}
-    )
-
-    return {
-        "dataset_id": dataset_id,
-        "project_name": project_name,
-        "project_code": project_code,
-        "processing_errors": processing_errors,
-        "assigned_to": assigned_to,
-        "assigned_by": assigned_by,
-        "table_name": table_name,
-        "filename": filename,
-        "rows": len(df),
-        "schema": schema
-    }
+        print(f"✅ handle_upload completed successfully")
+        
+        return {
+            "dataset_id": dataset_id,
+            "project_name": project_name,
+            "project_code": project_code,
+            "processing_errors": processing_errors,
+            "assigned_to": assigned_to,
+            "assigned_by": assigned_by,
+            "table_name": table_name,
+            "filename": filename,
+            "rows": len(df),
+            "schema": schema
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in handle_upload: {e}")
+        import traceback
+        traceback.print_exc()
+        raise

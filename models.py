@@ -81,6 +81,7 @@ class User(Base):
     # Relationships (optional - add if needed later)
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
     auth_codes = relationship("AuthCode", back_populates="user", cascade="all, delete-orphan")
+    packages = relationship("Package", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserSession(Base):
@@ -110,3 +111,18 @@ class AuthCode(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     
     user = relationship("User", back_populates="auth_codes")
+
+class Package(Base):
+    """ Stores the client packages selected"""
+    __tablename__ = "packages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    client_id = Column(String, ForeignKey("users.client_id"), nullable=False)
+    package_name = Column(String, nullable=False)
+    previous_package = Column(String, nullable=False)
+    started_with = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="packages")
+

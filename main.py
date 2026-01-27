@@ -18,7 +18,7 @@ from services.onboarding_service import process_onboarding
 from services.upload_service import handle_upload
 from services.visualization_service import aggregate_for_chart, fetch_table_preview
 from db import SessionLocal, engine, DATABASE_URL
-from models import Base, UserSession, AuthCode, User, Dataset, DatasetMeta
+from models import Base, UserSession, AuthCode, User, Dataset, DatasetMeta, Package
 from schemas import DatasetCreateResponse, DatasetInfo
 from sqlalchemy.orm import Session
 import uuid  # or your generate_client_id()
@@ -112,6 +112,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ======================
 # EMAIL MODELS & SERVICE
@@ -360,7 +361,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_
         if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
             raise HTTPException(status_code=401, detail="Token expired")
         # You can return user data if needed
-        return {"sub": username}
+        return {"sub": username }
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
@@ -657,6 +658,108 @@ async def authorize(request: Request, response_type: str, client_id: str, redire
     """
     return HTMLResponse(html)
 
+# ======================
+# PACKAGE ENDPOINTS
+# ======================
+@app.post("/set_package")
+async def set_client_package(
+    client_id: str = Form(...),
+    package_name: str = Form(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        print(f"Current user: {current_user}")
+
+        # Check if a package already exists for this client_id
+        existing_package = db.query(Package).filter(Package.client_id == client_id).first()
+
+        if existing_package:
+            # Update existing package
+            existing_package.previous_package  = existing_package.package_name 
+            existing_package.package_name = package_name
+            existing_package.updated_at = datetime.utcnow()
+            db.commit()
+            db.refresh(existing_package)
+            return JSONResponse(
+                status_code=201,
+                content={
+                    "message": f"Package updated to '{package_name}' for client {client_id}",
+                    "package": {
+                        "id": existing_package.id,
+                        "client_id": existing_package.client_id,
+                        "package_name": existing_package.package_name,
+                        "previous_package": existing_package.previous_package,
+                        "started_with": existing_package.started_with
+                    }
+                }
+            )
+        else:
+            # Create new package
+            new_package = Package(
+                client_id=client_id,
+                package_name=package_name,
+                previous_package=package_name,
+                started_with=package_name
+            )
+            db.add(new_package)
+            db.commit()
+            db.refresh(new_package)
+            return JSONResponse(
+                status_code=201,
+                content={
+                    "message": f"Package '{package_name}' set for client {client_id}",
+                    "package": {
+                        "id": new_package.id,
+                        "client_id": new_package.client_id,
+                        "package_name": new_package.package_name,
+                        "previous_package": new_package.previous_package,
+                        "started_with": new_package.started_with
+                    }
+                }
+            )
+
+    except Exception as e:
+        db.rollback()  # rollback on error
+        print(f"Error setting package: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Problem setting client package. Client ID might be missing or invalid: {str(e)}"
+        )
+            
+class PackagesResponse(BaseModel):
+    client_id: str
+    package_name: str
+    previous_package: str
+    started_with: str
+class PackageRequest(BaseModel):
+    client_id: str
+
+@app.get("/packages/{client_id}", response_model=PackagesResponse)
+async def getPackages(
+    client_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        package = db.query(Package).filter(Package.client_id == client_id).first()
+        if package:
+            return JSONResponse(
+                status_code=201,
+                content={
+                    "message": f"Package retreived successfully for client {client_id}",
+                    "package": {
+                        "id": package.id,
+                        "client_id": package.client_id,
+                        "package_name": package.package_name,
+                        "previous_package": package.previous_package,
+                        "started_with": package.started_with
+                    }
+                }
+            )
+        else:
+            return JSONResponse(status_code=404, content="Package not found")    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Problem retreiving package Error: {e}")     
 
 # ======================
 # NEW EMAIL ENDPOINTS

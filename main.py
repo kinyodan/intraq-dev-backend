@@ -658,9 +658,6 @@ async def authorize(request: Request, response_type: str, client_id: str, redire
     """
     return HTMLResponse(html)
 
-# ======================
-# PACKAGE ENDPOINTS
-# ======================
 @app.post("/set_package")
 async def set_client_package(
     client_id: str = Form(...),
@@ -682,7 +679,7 @@ async def set_client_package(
             db.commit()
             db.refresh(existing_package)
             return JSONResponse(
-                status_code=201,
+                status_code=200,
                 content={
                     "message": f"Package updated to '{package_name}' for client {client_id}",
                     "package": {
@@ -759,7 +756,8 @@ async def getPackages(
         else:
             return JSONResponse(status_code=404, content="Package not found")    
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Problem retreiving package Error: {e}")     
+        raise HTTPException(status_code=400, detail=f"Problem retreiving package Error: {e}") 
+
 
 # ======================
 # NEW EMAIL ENDPOINTS

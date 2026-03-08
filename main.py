@@ -963,7 +963,8 @@ async def upload_dataset(
         content={
             "message": f"Processing {len(files)} files in background",
             "task_ids": task_ids,
-            "project_code": project_code
+            "project_code": project_code,
+            "Client_id": client_id
         }
     )
 
@@ -974,6 +975,7 @@ def list_datasets(client_id: str = Query(None),
 ):
     """Return a list of all uploaded datasets, optionally filtered by client_id."""
     try:
+        print("START datasets_record-datasets_record-datasets_record")
 
         q = db.query(Dataset)
         if client_id:

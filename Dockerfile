@@ -26,8 +26,13 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application code
 COPY . .
 
+# Make start.sh executable
+RUN chmod +x start.sh
+
 # Expose port
 EXPOSE 8000
 
 # Use $PORT provided by Render, fallback to 8000 for local
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+#CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+
+CMD ["./start.sh"]

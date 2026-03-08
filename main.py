@@ -975,11 +975,13 @@ def list_datasets(client_id: str = Query(None),
 ):
     """Return a list of all uploaded datasets, optionally filtered by client_id."""
     try:
-        print("START datasets_record-datasets_record-datasets_record")
 
         q = db.query(Dataset)
         if client_id:
             q = q.filter(Dataset.client_id == client_id)
+            print("START datasets_record-datasets_record-datasets_record")
+            print(q.all())
+            print("START datasets_record-datasets_record-datasets_record")
 
         datasets = {}
         project_codes = []
@@ -987,6 +989,7 @@ def list_datasets(client_id: str = Query(None),
             datasets[qs.project_code] = {"datasets": []  } 
 
         for ds in q.all():
+            datasets[qs.project_code] = {"datasets": []  } 
             dataset_schema = ds.schema
             try:
                 dataset_schema = json.loads(ds.schema) if isinstance(ds.schema, str) else ds.schema

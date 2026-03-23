@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthoriz
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from jose import jwt, JWTError
-from datetime import datetime
+from datetime import datetime, timedelta
 from passlib.context import CryptContext
 import secrets, time, urllib.parse, re, hashlib, base64
 import shortuuid
@@ -23,6 +23,7 @@ from schemas import DatasetCreateResponse, DatasetInfo
 from sqlalchemy.orm import Session
 import uuid  # or your generate_client_id()
 from celery import Celery
+from datetime import datetime
 
 app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
 REDIS_URL = os.getenv("REDIS_URL","redis://localhost:6379/0")
@@ -850,7 +851,6 @@ async def verify_webhook(
         return int(challenge)
     return JSONResponse(status_code=403, content={"error": "Invalid token"})
 
-
 @app.post("/webhook")
 async def receive_message(request: Request,
     current_user: dict = Depends(get_current_user),
@@ -918,53 +918,157 @@ def run_upload_task(
         # Retry with exponential backoff
         self.retry(exc=exc, countdown=2 ** self.request.retries)
 
+# ────────────────────────────────────────────────
+#   Background function – still def (not async def)
+# ────────────────────────────────────────────────
+def run_upload_task_background(
+    task_id: str,                   # ← new: your own ID
+    file_content: bytes,
+    filename: str,
+    project_name: str,
+    assigned_to: str,
+    assigned_by: str,
+    client_id: str,
+    project_code: str,
+    processing_errors: Dict = None
+):
+    processing_errors = processing_errors or {}
 
-@app.post("/upload_dataset", response_model=dict)
-async def upload_dataset(
-    current_user: dict = Depends(get_current_user),
-    project_name: str = Form(...),
-    client_id: str = Form(...),
-    project_code: str = Form(...),
-    files: List[UploadFile] = File(...),
-    assigned_to: str = Form(...), 
-    assigned_by: str = Form(...), 
-    ):
+    print("=" * 60)
+    print(f"🚀 BACKGROUND TASK STARTED       | Task ID: {task_id}")
+    print(f"   File: {filename:<30} | Size: {len(file_content):,} bytes")
+    print(f"   Project: {project_name} ({project_code})")
+    print(f"   Client: {client_id}  | Assigned: {assigned_to}")
+    print("=" * 60)
 
-    print(project_name)
-    print(client_id)
-    print(project_code)
-    print(f"Uploading {len(files)} files")
+    start_time = datetime.utcnow()
 
-    if project_code == "null":
-        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
-
-    task_ids = []
-    
-    for file in files:
-        print(file.filename)
-        content = await file.read()  # Get bytes
-        
-        # CORRECT - Use .delay() or .apply_async()
-        task = run_upload_task.delay(
-            file_content=content,  # Pass bytes
-            filename=file.filename, 
+    try:
+        # Call your real processing logic
+        result = handle_upload(
+            file_content=file_content,
+            filename=filename,
             project_name=project_name,
             assigned_to=assigned_to,
             assigned_by=assigned_by,
             client_id=client_id,
             project_code=project_code,
-            processing_errors={}
+            processing_errors=processing_errors
         )
-        
-        task_ids.append(task.id)
-    
+
+        duration = (datetime.utcnow() - start_time).total_seconds()
+
+        print(f"✅ TASK COMPLETED SUCCESSFULLY   | Task ID: {task_id}")
+        print(f"   Duration: {duration:.2f} seconds")
+        print(f"   Result: {result}")
+        print("=" * 60)
+
+        # Optional: update some status store
+        # update_task_status(task_id, "success", result=result, duration=duration)
+
+        return result  # ← return value is ignored by BackgroundTasks
+
+    except Exception as exc:
+        duration = (datetime.utcnow() - start_time).total_seconds()
+
+        print(f"❌ TASK FAILED                    | Task ID: {task_id}")
+        print(f"   Error: {exc}")
+        print(f"   Duration: {duration:.2f} seconds")
+        print("=" * 60)
+
+        # Important: log somewhere persistent
+        # log_error(task_id, filename, exc)
+        # update_task_status(task_id, "failed", error=str(exc), duration=duration)
+
+        raise   # ← re-raise if you want to see it in logs / sentry
+
+# ────────────────────────────────────────────────
+#               FIXED ENDPOINT
+# ────────────────────────────────────────────────
+@app.post("/upload_dataset", response_model=dict)
+async def upload_dataset(
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+    project_name: str = Form(...),
+    client_id: str = Form(...),
+    project_code: str = Form(...),
+    files: List[UploadFile] = File(...),
+    assigned_to: str = Form(...),
+    assigned_by: str = Form(...),
+):
+    if not files:
+        raise HTTPException(400, "No files uploaded")
+
+    if project_code == "null":
+        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+
+    datasets: Dict = {}
+    # We'll keep this simple — one project_code per request
+
+    datasets[project_code] = {
+        "name": project_name.replace("_", " "),
+        "client_id": client_id,
+        "project_code": project_code,
+        "due_date": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+        "assigned_by": assigned_by,
+        "assigned_to": assigned_to,
+        "datasets": []
+    }
+
+    for file in files:
+        try:
+            content = await file.read()  # bytes
+
+            # Schedule background task (non-blocking)
+            background_tasks.add_task(
+                run_upload_task_background,
+                file_content=content,
+                filename=file.filename,
+                project_name=project_name,
+                assigned_to=assigned_to,
+                assigned_by=assigned_by,
+                client_id=client_id,
+                project_code=project_code,
+                processing_errors={}
+            )
+
+            # Add metadata for the JSON dump
+            datasets[project_code]["datasets"].append({
+                "dataset_id": project_code,           # ← maybe use uuid per file?
+                "project_name": project_name.replace("_", " "),
+                "project_code": project_code,
+                "due_date": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+                "status": "Pending",
+                "client_id": client_id,
+                "table_name": project_code,
+                "filename": file.filename,
+                "assigned_to": assigned_to,
+                "assigned_by": assigned_by,
+                "dataset_schema": "dataset_schema",   # ← placeholder?
+                "meta_info": {},
+                "created_at": datetime.utcnow().isoformat()
+            })
+
+        except Exception as e:
+            print(f"Error reading file {file.filename}: {e}")
+            # decide: continue or return early?
+
+    # Optional: dump to JSON file (not recommended in production)
+    # json_file = f"TEMP_DUMP_{project_code}_{client_id}.json"
+    # try:
+    #     with open(json_file, "w", encoding="utf-8") as f:
+    #         json.dump(datasets, f, indent=2, default=str)
+    # except Exception as e:
+    #     print(f"Failed to write JSON dump: {e}")
+
     return JSONResponse(
-        status_code=202,  # 202 Accepted (not 201)
+        status_code=202,
         content={
-            "message": f"Processing {len(files)} files in background",
-            "task_ids": task_ids,
+            "message": f"Accepted — processing {len(files)} file(s) in background",
             "project_code": project_code,
-            "Client_id": client_id
+            "client_id": client_id,
+            "task_ids": task_ids,        
+            "file_count": len(files),
         }
     )
 
@@ -973,6 +1077,7 @@ def list_datasets(client_id: str = Query(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+
     """Return a list of all uploaded datasets, optionally filtered by client_id."""
     try:
 

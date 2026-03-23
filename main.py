@@ -1024,6 +1024,7 @@ async def upload_dataset(
             # Schedule background task (non-blocking)
             background_tasks.add_task(
                 run_upload_task_background,
+                task_id=task_id,
                 file_content=content,
                 filename=file.filename,
                 project_name=project_name,

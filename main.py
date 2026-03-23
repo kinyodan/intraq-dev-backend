@@ -1020,6 +1020,7 @@ async def upload_dataset(
         try:
             content = await file.read()  # bytes
             task_id = file.filename        
+            processing_errors = {}
 
             result = await handle_upload(
                 content, 

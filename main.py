@@ -1003,6 +1003,7 @@ async def upload_dataset(
         project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
 
     datasets: Dict = {}
+    task_ids = []
     # We'll keep this simple — one project_code per request
 
     datasets[project_code] = {
@@ -1018,6 +1019,7 @@ async def upload_dataset(
     for file in files:
         try:
             content = await file.read()  # bytes
+            task_id = file.filename        
 
             # Schedule background task (non-blocking)
             background_tasks.add_task(
@@ -1031,6 +1033,8 @@ async def upload_dataset(
                 project_code=project_code,
                 processing_errors={}
             )
+
+            task_ids.append(task_id) 
 
             # Add metadata for the JSON dump
             datasets[project_code]["datasets"].append({

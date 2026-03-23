@@ -22,22 +22,33 @@ def infer_schema(df: pd.DataFrame):
     return cols
 
 def save_dataframe_as_table(df: pd.DataFrame, table_name: str):
-    """Save DataFrame as a table in the database"""
+    """Save DataFrame as a table in the database – with lowercase table name"""
+    # Force lowercase – prevents 99% of these PostgreSQL surprises
+    table_name = table_name.lower()
+
     print(f"💾 Attempting to save DataFrame to table: {table_name}")
     print(f" Shape: {df.shape[0]} rows, {df.shape[1]} columns")
     print(f" Columns: {list(df.columns)}")
-   
+
     try:
+        # Optional quick connection test (can keep or remove)
         with engine.connect() as conn:
             print("✅ Database connection test passed")
-       
-        df.to_sql(table_name, engine, index=False, if_exists='replace')
+
+        # Create / replace the table (name is now lowercase)
+        df.to_sql(
+            name=table_name,
+            con=engine,
+            index=False,
+            if_exists='replace'
+        )
         print(f"✅ Successfully saved to table: {table_name}")
-       
+
+        # Verify count – using the same lowercase name
         with engine.connect() as conn:
             count = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
             print(f"✅ Verified: {count} rows in table")
-           
+
     except Exception as e:
         print(f"❌ Error in save_dataframe_as_table: {e}")
         raise

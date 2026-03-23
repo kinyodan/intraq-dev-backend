@@ -944,16 +944,16 @@ def run_upload_task_background(
     start_time = datetime.utcnow()
 
     try:
-        # Call your real processing logic
+        
         result = handle_upload(
-            file_content=file_content,
-            filename=filename,
-            project_name=project_name,
-            assigned_to=assigned_to,
-            assigned_by=assigned_by,
-            client_id=client_id,
-            project_code=project_code,
-            processing_errors=processing_errors
+            file_content, 
+            filename, 
+            project_name,
+            assigned_to,
+            assigned_by,
+            client_id,
+            project_code,
+            processing_errors or {}
         )
 
         duration = (datetime.utcnow() - start_time).total_seconds()

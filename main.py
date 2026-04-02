@@ -108,6 +108,7 @@ app.add_middleware(
         "https://intraq-ui.vercel.app",
         "https://intraq-dashboard.vercel.app",
         "https://dashboard.intraq.simokai.com"
+        "https://www.intraq.pro"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -1022,30 +1023,30 @@ async def upload_dataset(
             task_id = file.filename        
             processing_errors = {}
 
-            result = await handle_upload(
-                content, 
-                file.filename, 
-                project_name,
-                assigned_to,
-                assigned_by,
-                client_id,
-                project_code,
-                processing_errors or {}
-            )
-
-            # Schedule background task (non-blocking)
-            # background_tasks.add_task(
-            #     run_upload_task_background,
-            #     task_id=task_id,
-            #     file_content=content,
-            #     filename=file.filename,
-            #     project_name=project_name,
-            #     assigned_to=assigned_to,
-            #     assigned_by=assigned_by,
-            #     client_id=client_id,
-            #     project_code=project_code,
-            #     processing_errors={}
+            # result = await handle_upload(
+            #     content, 
+            #     file.filename, 
+            #     project_name,
+            #     assigned_to,
+            #     assigned_by,
+            #     client_id,
+            #     project_code,
+            #     processing_errors or {}
             # )
+
+            Schedule background task (non-blocking)
+            background_tasks.add_task(
+                run_upload_task_background,
+                task_id=task_id,
+                file_content=content,
+                filename=file.filename,
+                project_name=project_name,
+                assigned_to=assigned_to,
+                assigned_by=assigned_by,
+                client_id=client_id,
+                project_code=project_code,
+                processing_errors={}
+            )
 
             task_ids.append(task_id) 
 
@@ -1081,7 +1082,7 @@ async def upload_dataset(
     return JSONResponse(
         status_code=202,
         content={
-            "message": f"Accepted — processing {len(files)} file(s) in background",
+            "message": f"Accepted Uploads — processing {len(files)} file(s) in background ",
             "project_code": project_code,
             "client_id": client_id,
             "task_ids": task_ids,        

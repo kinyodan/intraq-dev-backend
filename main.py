@@ -108,7 +108,8 @@ app.add_middleware(
         "https://intraq-ui.vercel.app",
         "https://intraq-dashboard.vercel.app",
         "https://dashboard.intraq.simokai.com",
-        "https://www.intraq.pro"
+        "https://www.intraq.pro",
+        "https://dashboard.intraq.pro"
     ],
     allow_credentials=True,
     allow_methods=["*"],

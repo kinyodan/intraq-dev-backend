@@ -149,6 +149,15 @@ class EmailResponse(BaseModel):
     total_sent: int
     total_failed: int
 
+class SoftDeleteRequest(BaseModel):
+    reason: Optional[str] = None
+    permanent_delete_days: int = 30
+
+
+class RestoreRequest(BaseModel):
+    pass  # Empty body, just confirmation
+
+
 class EmailService:
     def __init__(self, from_email: str, from_name: str = "Intraq"):
         self.from_email = from_email
@@ -1246,6 +1255,229 @@ def get_project(
 
     finally:
         db.close()
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Endpoint: Soft Delete (Move to Trash)
+# ───────────────────────────────────────────────────────────────────────────
+
+@app.delete("/api/datasets/{dataset_id}")
+async def delete_dataset(
+    dataset_id: str,
+    request: SoftDeleteRequest = None,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Soft delete a dataset - moves it to trash instead of permanent deletion
+    
+    The dataset will be:
+    - Marked as deleted in the metadata
+    - Table renamed with "trash_" prefix
+    - Automatically permanently deleted after 30 days (configurable)
+    
+    Can be restored using POST /api/datasets/{dataset_id}/restore
+    """
+    # Find the dataset first
+    dataset = db.query(Dataset).filter(
+        Dataset.dataset_id == dataset_id,
+        Dataset.is_deleted == False
+    ).first()
+    
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    # Check access - user must own the dataset or be admin
+    if dataset.client_id != current_user.get("client_id") and not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Access denied - you can only delete your own datasets")
+    
+    # Perform soft delete
+    result = soft_delete_dataset(
+        db=db,
+        dataset_id=dataset_id,
+        user_id=current_user.get("sub"),
+        reason=request.reason if request else None,
+        permanent_delete_days=request.permanent_delete_days if request else 30
+    )
+    
+    return result
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Endpoint: Restore from Trash
+# ───────────────────────────────────────────────────────────────────────────
+
+@app.post("/api/datasets/{dataset_id}/restore")
+async def restore_dataset_endpoint(
+    dataset_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Restore a soft-deleted dataset from trash
+    
+    This will:
+    - Restore the dataset metadata
+    - Rename the table back to its original name
+    - Make the data accessible again
+    """
+    # Find the deleted dataset
+    dataset = db.query(Dataset).filter(
+        Dataset.dataset_id == dataset_id,
+        Dataset.is_deleted == True
+    ).first()
+    
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found in trash")
+    
+    # Check access
+    if dataset.client_id != current_user.get("client_id") and not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Restore
+    result = restore_dataset(
+        db=db,
+        dataset_id=dataset_id,
+        user_id=current_user.get("sub")
+    )
+    
+    return result
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Endpoint: List Trash
+# ───────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/datasets/trash/list")
+async def list_trash(
+    client_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    List all datasets in trash (soft deleted)
+    
+    Returns datasets that:
+    - Were deleted by the current user, OR
+    - Belong to the current user's client_id, OR  
+    - User is admin
+    
+    Includes days_until_permanent_delete for each item.
+    """
+    # Filter by current user's access
+    if not current_user.get("is_admin"):
+        if client_id and client_id != current_user.get("client_id"):
+            raise HTTPException(status_code=403, detail="Access denied")
+        client_id = current_user.get("client_id")
+    
+    result = list_trashed_datasets(
+        db=db,
+        client_id=client_id,
+        limit=limit,
+        offset=offset
+    )
+    
+    return result
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Endpoint: Permanent Delete (Use with caution!)
+# ───────────────────────────────────────────────────────────────────────────
+
+@app.delete("/api/datasets/{dataset_id}/permanent")
+async def permanent_delete_dataset_endpoint(
+    dataset_id: str,
+    confirm: bool = Query(False, description="Must be true to confirm permanent deletion"),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Permanently delete a dataset from trash
+    
+    ⚠️ WARNING: This action CANNOT be undone!
+    
+    The dataset must already be in trash (soft deleted).
+    Only admins or the original owner can permanently delete.
+    """
+    if not confirm:
+        raise HTTPException(
+            status_code=400, 
+            detail="Must set confirm=true to permanently delete. This action cannot be undone!"
+        )
+    
+    # Find the deleted dataset
+    dataset = db.query(Dataset).filter(
+        Dataset.dataset_id == dataset_id,
+        Dataset.is_deleted == True
+    ).first()
+    
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found in trash")
+    
+    # Check access - only owner or admin
+    if dataset.client_id != current_user.get("client_id") and not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Perform permanent deletion
+    result = permanently_delete_dataset(
+        db=db,
+        dataset_id=dataset_id,
+        user_id=current_user.get("sub")
+    )
+    
+    return result
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Endpoint: Empty Trash (Admin only)
+# ───────────────────────────────────────────────────────────────────────────
+
+@app.delete("/api/datasets/trash/empty")
+async def empty_trash(
+    older_than_days: int = Query(365, ge=1, description="Delete items older than this many days"),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Empty trash by permanently deleting all soft-deleted datasets older than X days
+    
+    Admin only endpoint.
+    """
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+    
+    # Find old deleted datasets
+    old_datasets = db.query(Dataset).filter(
+        Dataset.is_deleted == True,
+        Dataset.deleted_at < cutoff_date
+    ).all()
+    
+    deleted_count = 0
+    errors = []
+    
+    for dataset in old_datasets:
+        try:
+            permanently_delete_dataset(
+                db=db,
+                dataset_id=dataset.dataset_id,
+                user_id=current_user.get("sub")
+            )
+            deleted_count += 1
+        except Exception as e:
+            errors.append(f"Failed to delete {dataset.dataset_id}: {str(e)}")
+    
+    return {
+        "success": True,
+        "message": f"Emptied trash. {deleted_count} datasets permanently deleted.",
+        "deleted_count": deleted_count,
+        "errors": errors if errors else None
+    }
+
+
 
 
 @app.get("/visualize/")

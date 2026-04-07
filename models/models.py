@@ -39,6 +39,15 @@ class Dataset(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     schema = Column(JSONType())  # list of {name, dtype}
     meta = Column(Text, nullable=True)  # extra info as json string
+    # Soft delete fields
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by = Column(String, nullable=True)
+    delete_reason = Column(Text, nullable=True)
+    restored_at = Column(DateTime(timezone=True), nullable=True)
+    restored_by = Column(String, nullable=True)
+    original_table_name = Column(String, nullable=True)
+
 
 def create_db():
     engine = sqlalchemy.create_engine(os.getenv("DATABASE_URL", "sqlite:///./intraq_meta.db"), connect_args={"check_same_thread": False} if os.getenv("DATABASE_URL","").startswith("sqlite") else {})

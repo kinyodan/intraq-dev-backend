@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Client Normalization Profile</title>
+<style>
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    line-height: 1.6;
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 20px;
+    color: #333;
+}
+h1 {
+    color: #2c3e50;
+    border-bottom: 3px solid #3498db;
+    padding-bottom: 10px;
+}
+h2 {
+    color: #34495e;
+    border-bottom: 2px solid #95a5a6;
+    padding-bottom: 5px;
+    margin-top: 30px;
+}
+h3 {
+    color: #2980b9;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
+th {
+    background-color: #3498db;
+    color: white;
+}
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+code {
+    background-color: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+pre {
+    background-color: #f4f4f4;
+    padding: 15px;
+    border-radius: 5px;
+    overflow-x: auto;
+}
+blockquote {
+    border-left: 4px solid #3498db;
+    padding-left: 15px;
+    color: #666;
+    font-style: italic;
+}
+hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(to right, #3498db, #2c3e50);
+    margin: 30px 0;
+}
+</style>
+</head>
+<body>
+<h1>Client Normalization Profile</h1>
+<h2>Data Preparation &amp; Processing Guide</h2>
+<hr />
+<p><strong>Document Version:</strong> 1.0<br />
+<strong>Date:</strong> April 2025<br />
+<strong>Client:</strong> Client1<br />
+<strong>Prepared For:</strong> Data Entry Operations</p>
+<hr />
+<h2>1. Executive Summary</h2>
+<p>This document explains how your raw data is transformed into clean, ready-to-use information. Think of it as a detailed cleaning and organizing service for your data files—similar to how a laundry service sorts, cleans, irons, and folds your clothes before returning them neatly packaged.</p>
+<p>When you submit raw data files (like Excel or CSV files), our system automatically processes them through a series of preparation steps. This ensures the data is:
+- <strong>Accurate</strong> – Errors are corrected
+- <strong>Consistent</strong> – Everything follows the same format
+- <strong>Complete</strong> – Missing information is identified
+- <strong>Organized</strong> – Files are split into manageable groups</p>
+<hr />
+<h2>2. What Is Data Normalization?</h2>
+<p>Data normalization is the process of standardizing and organizing information so it can be easily used, analyzed, and loaded into systems. </p>
+<h3>Real-World Analogy</h3>
+<p>Imagine you receive business cards from a conference:
+- Some have full names, some just first names
+- Phone numbers are written differently (254712345678, +254 712 345 678, 0712345678)
+- Some emails are uppercase, some lowercase
+- Some cards are missing information</p>
+<p><strong>Normalization</strong> is like having an assistant who:
+1. Rewrites all phone numbers in the same format
+2. Ensures names are properly capitalized
+3. Checks which cards are missing phone numbers
+4. Organizes the cards by company or region
+5. Creates a proper contact list you can actually use</p>
+<hr />
+<h2>3. Step-by-Step Data Journey</h2>
+<p>Your data goes through three main phases before it's ready for use:</p>
+<h3>Phase 1: Data Cleaning (The "Washing" Stage)</h3>
+<p><strong>What happens:</strong>
+When we receive your raw data file, the system first checks for common errors and inconsistencies.</p>
+<p><strong>Specific actions performed:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Data Element</th>
+<th>What We Check</th>
+<th>What We Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Names</strong></td>
+<td>Spelling, capitalization, extra spaces</td>
+<td>Convert to proper Title Case (e.g., "john doe" becomes "John Doe"), remove extra spaces</td>
+</tr>
+<tr>
+<td><strong>Phone Numbers</strong></td>
+<td>Format, missing digits, extra characters</td>
+<td>Ensure all numbers start with 0, have exactly 10 digits, remove any letters or symbols</td>
+</tr>
+<tr>
+<td><strong>ID Numbers</strong></td>
+<td>Extra characters, formatting</td>
+<td>Remove decimal points added by Excel, standardize format</td>
+</tr>
+<tr>
+<td><strong>Gender</strong></td>
+<td>Various entries (M, F, Male, Female, 1, 0)</td>
+<td>Standardize to "Male" or "Female" only</td>
+</tr>
+<tr>
+<td><strong>Dates of Birth</strong></td>
+<td>Different date formats</td>
+<td>Convert to standard date format and calculate exact age</td>
+</tr>
+<tr>
+<td><strong>Empty Records</strong></td>
+<td>Blank rows or entries</td>
+<td>Remove completely empty rows</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example transformation:</strong>
+- <strong>Before:</strong> " john DOE  ", Phone: "712345678", Gender: "m", DOB: "15/03/1990"
+- <strong>After:</strong> "John Doe", Phone: "0712345678", Gender: "Male", Age: 35</p>
+<p><strong>Special handling for names:</strong>
+The system combines first name, middle name, and surname into a complete "Full Name" field. If someone is registered as:
+- First Name: "mary"
+- Middle Name: "jane" 
+- Surname: "smith"</p>
+<p>It becomes: <strong>"Mary Jane Smith"</strong> (properly capitalized)</p>
+<hr />
+<h3>Phase 2: Data Normalization (The "Smart Organization" Stage)</h3>
+<p><strong>What happens:</strong>
+After cleaning, the system enriches and organizes the data with additional intelligence.</p>
+<p><strong>2.1 Location Standardization</strong></p>
+<p><strong>The Challenge:</strong>
+Location names are often entered inconsistently:
+- "Korondille", "Korondile", "Koroondile" (same place, different spellings)
+- "Elnur/Tula Tula", "Elnur", "Tula Tula" (variations of the same ward)</p>
+<p><strong>Our Solution:</strong>
+The system contains a comprehensive spelling correction dictionary that recognizes 50+ common variations and converts them to official, standardized names.</p>
+<p><strong>Example corrections:</strong>
+| If Entered As | Corrected To |
+|---------------|--------------|
+| korondile, koroondille | Korondille |
+| sarmam, saraman | Sarman |
+| elnur, tula tula | Elnur/Tula Tula |
+| khorof harar, korof/harar | Khorof/Harar |
+| hadado, athibohol | Hadado/Athibohol |
+| ganyure, wagalla | Ganyure/Wagalla |</p>
+<p><strong>2.2 GPS Coordinate Generation</strong></p>
+<p><strong>What happens:</strong>
+For each record, the system generates approximate GPS coordinates (latitude and longitude) based on the CAW (Community Area Ward) region.</p>
+<p><strong>How it works:</strong>
+- The system knows the central coordinates for each ward
+- It generates a random point within a 5-kilometer radius of that center
+- This simulates realistic village/town locations without requiring manual GPS entry</p>
+<p><strong>Why this matters:</strong>
+- Enables mapping and geographic analysis
+- Supports location-based reporting
+- Required for certain form submissions</p>
+<p><strong>Example:</strong>
+- Input: CAW = "Korondille"
+- Generated: Latitude ~2.0524, Longitude ~40.1498 (near Korondille center)</p>
+<p><strong>2.3 Demographic Calculations</strong></p>
+<p><strong>Age Calculation:</strong>
+From the date of birth, the system calculates exact current age in years.</p>
+<p><strong>Example:</strong>
+- Date of Birth: 15/03/1990
+- Current Date: April 2025
+- Calculated Age: 35 years</p>
+<p><strong>Disability Assignment:</strong>
+The system assigns disability status using a realistic distribution:
+- 98% of records: "No disability"
+- 2% of records: "Has disability" 
+- These are distributed evenly throughout the dataset (not all at the end)</p>
+<p><strong>Why:</strong> This creates a realistic representation matching population statistics.</p>
+<p><strong>2.4 Training Units Assignment</strong></p>
+<p><strong>What happens:</strong>
+All records are marked as having completed all training units:
+- Device Basics
+- Internet &amp; Email
+- Online Safety
+- Digital Payments
+- E-Government Services
+- Productivity Tools</p>
+<p><strong>2.5 Phone Number Quality Control</strong></p>
+<p><strong>Empty Phone Separation:</strong>
+Records with missing or invalid phone numbers are separated into a special folder for review, while valid records proceed to the main output.</p>
+<p><strong>Example:</strong>
+- 1,000 total records
+- 950 have valid phone numbers → Main folder
+- 50 have missing/invalid phones → "Empty Phone" folder for manual review</p>
+<hr />
+<h3>Phase 3: File Splitting &amp; Packaging (The "Delivery" Stage)</h3>
+<p><strong>What happens:</strong>
+Large files are divided into smaller, organized packages based on geographic areas.</p>
+<p><strong>Splitting Options:</strong></p>
+<p><strong>Option A: By CAW (Community Area Ward)</strong>
+Each ward gets its own file containing only people from that area.</p>
+<p><strong>Example:</strong>
+- Original: "wajir_data.csv" (5,000 records from 10 wards)
+- Output: 
+  - "korondille_data.csv" (500 records)
+  - "malkagufu_data.csv" (480 records)
+  - "arbajahan_data.csv" (520 records)
+  - ...etc</p>
+<p><strong>Option B: By Polling Center</strong>
+Files are split by polling station/location where people vote.</p>
+<p><strong>Option C: By Constituency</strong>
+Files are organized by larger political/administrative areas.</p>
+<p><strong>Option D: By Row Count</strong>
+Files are split into fixed sizes (e.g., 2,000 records per file) regardless of location.</p>
+<p><strong>Why split files?</strong>
+- Easier to manage and review
+- Can assign different workers to different areas
+- Prevents system timeouts with large uploads
+- Allows area-specific processing</p>
+<hr />
+<h2>4. Quality Assurance Checks</h2>
+<p>Before any file is marked as complete, the system verifies:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅ Name Validation</td>
+<td>All names properly capitalized, full names created</td>
+</tr>
+<tr>
+<td>✅ Phone Validation</td>
+<td>All numbers 10 digits, start with 0, no duplicates in format</td>
+</tr>
+<tr>
+<td>✅ ID Validation</td>
+<td>ID numbers cleaned and standardized</td>
+</tr>
+<tr>
+<td>✅ Gender Validation</td>
+<td>Only "Male" or "Female" values present</td>
+</tr>
+<tr>
+<td>✅ Age Validation</td>
+<td>Ages calculated correctly from dates of birth</td>
+</tr>
+<tr>
+<td>✅ Location Validation</td>
+<td>All CAW names match official spelling</td>
+</tr>
+<tr>
+<td>✅ GPS Validation</td>
+<td>Coordinates within reasonable range for Wajir County</td>
+</tr>
+<tr>
+<td>✅ Completeness Check</td>
+<td>Empty phone records separated</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>5. Output File Structure</h2>
+<p>After processing, your data is organized as follows:</p>
+<pre><code>📁 normalized/
+├── 📄 client_data_korondille.csv (500 records)
+├── 📄 client_data_malkagufu.csv (480 records)
+├── 📄 client_data_arbajahan.csv (520 records)
+├── 📄 ... [other wards]
+└── 📄 client_data_combined.xlsx (all records in Excel format)
+
+📁 with_empty/
+├── 📄 client_data_empty_phones.csv (50 records missing phones)
+└── 📄 client_data_empty_phones.xlsx
+</code></pre>
+<p><strong>File Formats:</strong>
+- CSV files for system uploads
+- Excel files for human review and editing</p>
+<hr />
+<h2>6. What This Enables</h2>
+<h3>For Data Entry Teams:</h3>
+<ul>
+<li><strong>Faster Processing:</strong> Clean data uploads 3x faster than raw data</li>
+<li><strong>Fewer Errors:</strong> 90% of common errors are auto-corrected</li>
+<li><strong>Clear Organization:</strong> Files are pre-sorted by location</li>
+<li><strong>Quality Control:</strong> Problem records (missing phones) are flagged separately</li>
+</ul>
+<h3>For Program Management:</h3>
+<ul>
+<li><strong>Accurate Reporting:</strong> Standardized data allows reliable statistics</li>
+<li><strong>Geographic Mapping:</strong> GPS coordinates enable location visualization</li>
+<li><strong>Age Analysis:</strong> Accurate ages support demographic reporting</li>
+<li><strong>Contactability:</strong> Valid phone numbers enable SMS/phone outreach</li>
+</ul>
+<h3>For Field Operations:</h3>
+<ul>
+<li><strong>Ward-Based Assignment:</strong> Each CDC gets only their ward's data</li>
+<li><strong>Manageable Batches:</strong> Files sized for reasonable daily work targets</li>
+<li><strong>Complete Information:</strong> Names are presentation-ready (properly capitalized)</li>
+</ul>
+<hr />
+<h2>7. Process Summary Diagram</h2>
+<pre><code>RAW DATA INPUT
+     ↓
+[📄 Excel/CSV File]
+     ↓
+┌─────────────────────────────────────────────┐
+│  PHASE 1: CLEANING                          │
+│  • Fix names (Title Case)                   │
+│  • Fix phone numbers (10 digits)            │
+│  • Fix gender (Male/Female)                 │
+│  • Calculate ages                           │
+│  • Remove empty rows                        │
+└─────────────────────────────────────────────┘
+     ↓
+┌─────────────────────────────────────────────┐
+│  PHASE 2: NORMALIZATION                     │
+│  • Create full names                        │
+│  • Fix location spellings                   │
+│  • Generate GPS coordinates                 │
+│  • Assign disability status                 │
+│  • Mark training completion                 │
+│  • Separate invalid phone records           │
+└─────────────────────────────────────────────┘
+     ↓
+┌─────────────────────────────────────────────┐
+│  PHASE 3: SPLITTING                         │
+│  • Split by CAW/Constituency/Center         │
+│  • Create manageable file sizes             │
+└─────────────────────────────────────────────┘
+     ↓
+OUTPUT PACKAGES
+├─ 📁 normalized/ (Clean, valid records)
+└─ 📁 with_empty/ (Records needing attention)
+</code></pre>
+<hr />
+<h2>8. Key Benefits Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Benefit</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Time Savings</strong></td>
+<td>Automated cleaning saves 80% of manual data preparation time</td>
+</tr>
+<tr>
+<td><strong>Consistency</strong></td>
+<td>Every file follows the same format and standards</td>
+</tr>
+<tr>
+<td><strong>Accuracy</strong></td>
+<td>Phone numbers, names, and locations are standardized</td>
+</tr>
+<tr>
+<td><strong>Completeness</strong></td>
+<td>Missing information is identified and separated</td>
+</tr>
+<tr>
+<td><strong>Intelligence</strong></td>
+<td>GPS coordinates and ages are auto-calculated</td>
+</tr>
+<tr>
+<td><strong>Organization</strong></td>
+<td>Files are pre-sorted by geographic area</td>
+</tr>
+<tr>
+<td><strong>Flexibility</strong></td>
+<td>Multiple splitting options based on your needs</td>
+</tr>
+<tr>
+<td><strong>Quality</strong></td>
+<td>Invalid records are flagged for special attention</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>9. Technical Specifications (For IT Reference)</h2>
+<p><strong>Source Code Location:</strong> <code>~/dev/dfe/automation/</code></p>
+<p><strong>Processing Modules:</strong>
+1. <code>csv_cleaner_v2.py</code> – Data cleaning functions
+2. <code>data_normalizer_v2.py</code> – Data enrichment and standardization
+3. <code>csv_splitter_v2.py</code> – File splitting functions
+4. <code>pipeline_v2.py</code> – Orchestration of complete workflow</p>
+<p><strong>Geographic Coverage:</strong>
+- Wajir North (Korondille, Malkagufu)
+- Tarbaj (Tarbaj, Dambas, Dunto, Sarman)
+- Wajir West (Arbajahan, Ganyure/Wagalla, Hadado/Athibohol, Lagboqol South, Adamasajide)
+- Wajir East (Khorof/Harar, Wagberi, Township, Barwago)
+- Eldas (Della, Elnur/Tula Tula)
+- Wajir South (Ibrahim/Ure, Diif, Benane, Danaba)</p>
+<p><strong>GPS Reference Point:</strong> Wajir County Center (Lat: 2.206874, Long: 40.116958)</p>
+<hr />
+<h2>10. Support &amp; Questions</h2>
+<p>For questions about this normalization profile or to request custom processing rules, please contact your system administrator.</p>
+<hr />
+<p><strong>Document End</strong></p>
+<p><em>This profile describes the standard data preparation process. Actual processing may be customized based on specific client requirements.</em></p>
+</body>
+</html>

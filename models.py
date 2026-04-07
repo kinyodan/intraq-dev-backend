@@ -1,6 +1,6 @@
 # models.py
 
-from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime, func,ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, JSON, DateTime, func,ForeignKey, Text
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime, timedelta
 from pytz import utc
@@ -50,6 +50,14 @@ class Dataset(Base):
     meta = Column(JSON, nullable=True)     
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    # Soft delete fields
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by = Column(String, nullable=True)
+    delete_reason = Column(Text, nullable=True)
+    restored_at = Column(DateTime(timezone=True), nullable=True)
+    restored_by = Column(String, nullable=True)
+    original_table_name = Column(String, nullable=True)
 
 class DatasetMeta(Base):
     __tablename__ = "dataset_meta"

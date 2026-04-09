@@ -787,11 +787,11 @@ async def run_migrations(background_tasks: BackgroundTasks):
     return {"status": "migrations completed"}
 
 # Or for startup (runs every time app starts):
-@app.on_event("startup")
-async def startup_event():
-    """Run migrations on startup"""
-    alembic_cfg = Config("alembic.ini")
-    command.upgrade(alembic_cfg, "head")
+# @app.on_event("startup")
+# async def startup_event():
+#     """Run migrations on GETstartup"""
+#     alembic_cfg = Config("alembic.ini")
+#     command.upgrade(alembic_cfg, "head")
 
 # ======================
 # NEW EMAIL ENDPOINTS

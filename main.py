@@ -1,7 +1,9 @@
-from fastapi import FastAPI, Request, Form, HTTPException, Depends, BackgroundTasks, Query, UploadFile, File
+from fastapi import FastAPI, Request, Form, HTTPException, Depends, BackgroundTasks, APIRouter, Query, UploadFile, File
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from alembic import command
+from alembic.config import Config
 from pydantic import BaseModel, EmailStr
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
@@ -770,6 +772,26 @@ async def getPackages(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Problem retreiving package Error: {e}") 
 
+
+# ======================
+# DATABASE MIGRATION ENDPOINTS
+# ======================
+
+router = APIRouter()
+
+@router.post("/admin/migrate")
+async def run_migrations(background_tasks: BackgroundTasks):
+    """Run Alembic migrations - call this after deployment"""
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+    return {"status": "migrations completed"}
+
+# Or for startup (runs every time app starts):
+@app.on_event("startup")
+async def startup_event():
+    """Run migrations on startup"""
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
 
 # ======================
 # NEW EMAIL ENDPOINTS

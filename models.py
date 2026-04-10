@@ -120,6 +120,24 @@ class AuthCode(Base):
     
     user = relationship("User", back_populates="auth_codes")
 
+class DeletedDatasetLog(Base):
+    """Audit log for soft-deleted datasets"""
+    __tablename__ = "deleted_dataset_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    dataset_id = Column(String, nullable=False, index=True)
+    client_id = Column(String, nullable=False, index=True)
+    project_name = Column(String, nullable=False)
+    project_code = Column(String, nullable=True)
+    table_name = Column(String, nullable=False)
+    filename = Column(String, nullable=False)
+    row_count = Column(Integer, default=0)
+    deleted_by = Column(String, nullable=True)
+    delete_reason = Column(Text, nullable=True)
+    permanent_delete_scheduled_at = Column(DateTime(timezone=True), nullable=True)
+    dataset_snapshot = Column(JSON, nullable=True)  # stores schema, meta, etc.
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
 class Package(Base):
     """ Stores the client packages selected"""
     __tablename__ = "packages"

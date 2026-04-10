@@ -26,6 +26,16 @@ from sqlalchemy.orm import Session
 import uuid  # or your generate_client_id()
 from celery import Celery
 from datetime import datetime
+from services.delete_service import (
+    soft_delete_dataset,
+    restore_dataset,
+    list_trashed_datasets,
+    permanently_delete_dataset,
+    soft_delete_project,      # NEW
+    restore_project,          # NEW
+    list_trashed_projects,    # NEW
+    permanently_delete_project # NEW
+)
 
 app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
 REDIS_URL = os.getenv("REDIS_URL","redis://localhost:6379/0")
@@ -1133,7 +1143,7 @@ def list_datasets(client_id: str = Query(None),
 
         q = db.query(Dataset)
         if client_id:
-            q = q.filter(Dataset.client_id == client_id)
+            q = q.filter(Dataset.client_id == client_id, Dataset.is_deleted == False)
             print("START datasets_record-datasets_record-datasets_record")
             print(q.all())
             print("START datasets_record-datasets_record-datasets_record")
@@ -1279,6 +1289,83 @@ def get_project(
         db.close()
 
 
+
+# ───────────────────────────────────────────────────────────────────────────
+# PROJECT-LEVEL SOFT DELETE ENDPOINTS
+# ───────────────────────────────────────────────────────────────────────────
+
+@app.delete("/api/projects/{project_code}")
+async def delete_project_endpoint(
+    project_code: str,
+    request: SoftDeleteRequest = None,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Soft delete an entire project and all its datasets"""
+    result = soft_delete_project(
+        db=db,
+        project_code=project_code,
+        user_id=current_user.get("sub"),
+        reason=request.reason if request else None,
+        permanent_delete_days=request.permanent_delete_days if request else 30
+    )
+    return result
+
+@app.post("/api/projects/{project_code}/restore")
+async def restore_project_endpoint(
+    project_code: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Restore an entire project from trash"""
+    result = restore_project(
+        db=db,
+        project_code=project_code,
+        user_id=current_user.get("sub")
+    )
+    return result
+
+@app.get("/api/projects/trash/list")
+async def list_trashed_projects_endpoint(
+    client_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """List all projects in trash (soft deleted)"""
+    if not current_user.get("is_admin"):
+        client_id = current_user.get("client_id")
+    
+    result = list_trashed_projects(
+        db=db,
+        client_id=client_id,
+        limit=limit,
+        offset=offset
+    )
+    return result
+
+@app.delete("/api/projects/{project_code}/permanent")
+async def permanent_delete_project_endpoint(
+    project_code: str,
+    confirm: bool = Query(False),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Permanently delete a project from trash"""
+    if not confirm:
+        raise HTTPException(
+            status_code=400,
+            detail="Must set confirm=true. This action cannot be undone!"
+        )
+    
+    result = permanently_delete_project(
+        db=db,
+        project_code=project_code,
+        user_id=current_user.get("sub")
+    )
+    return result
+
 # ───────────────────────────────────────────────────────────────────────────
 # Endpoint: Soft Delete (Move to Trash)
 # ───────────────────────────────────────────────────────────────────────────
@@ -1324,7 +1411,6 @@ async def delete_dataset(
     
     return result
 
-
 # ───────────────────────────────────────────────────────────────────────────
 # Endpoint: Restore from Trash
 # ───────────────────────────────────────────────────────────────────────────
@@ -1365,7 +1451,6 @@ async def restore_dataset_endpoint(
     
     return result
 
-
 # ───────────────────────────────────────────────────────────────────────────
 # Endpoint: List Trash
 # ───────────────────────────────────────────────────────────────────────────
@@ -1402,7 +1487,6 @@ async def list_trash(
     )
     
     return result
-
 
 # ───────────────────────────────────────────────────────────────────────────
 # Endpoint: Permanent Delete (Use with caution!)
@@ -1498,9 +1582,6 @@ async def empty_trash(
         "deleted_count": deleted_count,
         "errors": errors if errors else None
     }
-
-
-
 
 @app.get("/visualize/")
 def visualize(

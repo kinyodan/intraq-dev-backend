@@ -1144,9 +1144,6 @@ def list_datasets(client_id: str = Query(None),
         q = db.query(Dataset)
         if client_id:
             q = q.filter(Dataset.client_id == client_id, Dataset.is_deleted == False)
-            print("START datasets_record-datasets_record-datasets_record")
-            print(q.all())
-            print("START datasets_record-datasets_record-datasets_record")
 
         datasets = {}
         project_codes = []
@@ -1163,10 +1160,6 @@ def list_datasets(client_id: str = Query(None),
 
             project_codes.append(ds.project_code)    
             datasets_record = datasets[ds.project_code]
-            print("START datasets_record-datasets_record-datasets_record")
-            print(ds.filename)
-            print("END datasets_record-datasets_record-datasets_record")
-
             datasets[ds.project_code]["datasets"].append({
                 "dataset_id": ds.dataset_id,
                 "project_name": ds.project_name.replace("_"," "),
@@ -1252,10 +1245,6 @@ def get_project(
                 dataset_schema = ds.schema
 
             datasets_record = datasets[ds.project_code]
-            print("START  datasets_record-datasets_record-datasets_record")
-            print(datasets_record)
-            print(ds.filename)
-            print("END datasets_record-datasets_record-datasets_record")
 
             datasets[ds.project_code]["datasets"].append({
                 "dataset_id": ds.dataset_id,
@@ -1287,8 +1276,6 @@ def get_project(
 
     finally:
         db.close()
-
-
 
 # ───────────────────────────────────────────────────────────────────────────
 # PROJECT-LEVEL SOFT DELETE ENDPOINTS

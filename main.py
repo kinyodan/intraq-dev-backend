@@ -1234,11 +1234,10 @@ def get_project(
             q = q.filter(Dataset.project_code == project_code)
 
         datasets = {}
-        for qs in q.all():
-            datasets[qs.project_code] = {"datasets": []  } 
-
         for ds in q.all():
+            datasets[ds.project_code] = datasets.get(ds.project_code , {"datasets": []  } )
             dataset_schema = ds.schema
+            
             try:
                 dataset_schema = json.loads(ds.schema) if isinstance(ds.schema, str) else ds.schema
             except Exception:

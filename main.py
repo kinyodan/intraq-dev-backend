@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, BackgroundTasks, APIRouter, Query, UploadFile, File
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
+import httpx
 from fastapi.middleware.cors import CORSMiddleware
 from alembic import command
 from alembic.config import Config
@@ -12,7 +13,6 @@ import secrets, time, urllib.parse, re, hashlib, base64
 import shortuuid
 import os
 from typing import List, Dict, Optional
-import httpx
 import resend
 import asyncio
 import logging
@@ -1303,7 +1303,7 @@ async def processing_session_data(
     params = {"norm": norm,"remote_file": str(remote_file),"headless": headless }
      
     try:
-
+        print(f"DEBUG: httpx is {type(httpx)}")
         async with httpx.AsyncClient(timeout=EXTERNAL_API_TIMEOUT) as client:
              response = await client.post(external_api_url, params=params)
 

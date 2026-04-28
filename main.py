@@ -1300,7 +1300,7 @@ async def processing_session_data(
     EXTERNAL_API_TIMEOUT = 30.0
     external_api_url = f"{EXTERNAL_API_BASE_URL}/run"
      
-    params = {"norm": norm,"remote_file": str(remote_file),"headless": headless , automation_file: f"{project_code}_automation.py"}
+    params = {"norm": norm,"remote_file": str(remote_file),"headless": headless , "automation_file": f"{project_code}_automation.py"}
      
     try:
         print(f"DEBUG: httpx is {type(httpx)}")

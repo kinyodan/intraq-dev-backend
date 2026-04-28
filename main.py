@@ -1285,45 +1285,45 @@ def get_project(
 
 @app.get("/api/process_session_data/{project_code}")
 async def processing_session_data(
- project_code: str,
- norm: int,
- remote_file: HttpUrl,
- headless: bool = False,
- request: DataProcessingRequest = None,
- current_user: dict = Depends(get_current_user),
- db: Session = Depends(get_db)
+    project_code: str,
+    norm: int, 
+    remote_file: HttpUrl, 
+    headless: bool = False, 
+    request: DataProcessingRequest = None, 
+    current_user: dict = Depends(get_current_user), 
+    db: Session = Depends(get_db)
 ):
-     """
-     Process session data by calling an external automation microservice.
-     """
+    """
+    Process session data by calling an external automation microservice.
+    """
     EXTERNAL_API_BASE_URL = "https://intraq-automations-16520908241.europe-west1.run.app"
     EXTERNAL_API_TIMEOUT = 30.0
     external_api_url = f"{EXTERNAL_API_BASE_URL}/run"
      
-    params = {
-     "norm": norm,
-     "remote_file": str(remote_file),
-     "headless": headless
-    }
+    params = {"norm": norm,"remote_file": str(remote_file),"headless": headless }
      
     try:
+        
         async with httpx.AsyncClient(timeout=EXTERNAL_API_TIMEOUT) as client:
              response = await client.post(external_api_url, params=params)
-        except httpx.TimeoutException:
-             raise HTTPException(
-                status_code=504,
-                detail={"error": "Gateway Timeout", "message": f"External API timeout", "project_code": project_code}
-             )
-        except httpx.ConnectError as e:
-             raise HTTPException(
-                status_code=503,
-                detail={"error": "Service Unavailable", "message": "Cannot connect to external service", "project_code": project_code}
-             )
-        except httpx.RequestError as e:
-            raise HTTPException(
-                status_code=502,
-                detail={"error": "Bad Gateway", "message": str(e), "project_code": project_code}
-            )
+
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=504,
+            detail={"error": "Gateway Timeout", 
+            "message": f"External API timeout", "project_code": project_code}
+        )
+
+    except httpx.ConnectError as e:
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "Service Unavailable", "message": "Cannot connect to external service", "project_code": project_code}
+        )
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "Bad Gateway", "message": str(e), "project_code": project_code}
+        )
          
     if response.status_code >= 400:
         try:
@@ -1339,8 +1339,8 @@ async def processing_session_data(
         external_response = response.json()
     except json.JSONDecodeError:
         raise HTTPException(
-        status_code=500,
-        detail={"error": "Invalid Response", "project_code": project_code}
+            status_code=500, 
+            detail={"error": "Invalid Response", "project_code": project_code}
         )
      
     return {
@@ -1350,7 +1350,7 @@ async def processing_session_data(
         "requested_params": params,
         "processed_at": datetime.utcnow().isoformat()
     }
-                
+                    
 # ───────────────────────────────────────────────────────────────────────────
 # PROJECT-LEVEL SOFT DELETE ENDPOINTS
 # ───────────────────────────────────────────────────────────────────────────

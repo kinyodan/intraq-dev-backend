@@ -1292,7 +1292,6 @@ async def processing_session_data(
     request: DataProcessingRequest = None, 
     current_user: dict = Depends(get_current_user), 
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
 ):
     """
     Process session data by calling an external automation microservice.

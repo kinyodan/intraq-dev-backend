@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthoriz
 from fastapi.middleware.cors import CORSMiddleware
 from alembic import command
 from alembic.config import Config
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, HttpUrl
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
@@ -1303,7 +1303,7 @@ async def processing_session_data(
     params = {"norm": norm,"remote_file": str(remote_file),"headless": headless }
      
     try:
-        
+
         async with httpx.AsyncClient(timeout=EXTERNAL_API_TIMEOUT) as client:
              response = await client.post(external_api_url, params=params)
 

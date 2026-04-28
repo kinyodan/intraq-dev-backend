@@ -1289,7 +1289,6 @@ async def processing_session_data(
     norm: int = Form(...), 
     remote_file: HttpUrl = Form(...), 
     headless: bool = Form(...), 
-    request: DataProcessingRequest = None, 
     current_user: dict = Depends(get_current_user), 
     db: Session = Depends(get_db),
 ):

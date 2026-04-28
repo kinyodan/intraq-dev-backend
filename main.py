@@ -12,6 +12,7 @@ import secrets, time, urllib.parse, re, hashlib, base64
 import shortuuid
 import os
 from typing import List, Dict, Optional
+import httpx
 import resend
 import asyncio
 import logging

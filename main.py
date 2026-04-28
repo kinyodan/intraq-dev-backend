@@ -1309,21 +1309,21 @@ async def processing_session_data(
     try:
         async with httpx.AsyncClient(timeout=EXTERNAL_API_TIMEOUT) as client:
              response = await client.post(external_api_url, params=params)
-        except httpx.TimeoutException:
-             raise HTTPException(
-                status_code=504,
-                detail={"error": "Gateway Timeout", "message": f"External API timeout", "project_code": project_code}
-             )
-        except httpx.ConnectError as e:
-             raise HTTPException(
-                status_code=503,
-                detail={"error": "Service Unavailable", "message": "Cannot connect to external service", "project_code": project_code}
-             )
-        except httpx.RequestError as e:
-            raise HTTPException(
-                status_code=502,
-                detail={"error": "Bad Gateway", "message": str(e), "project_code": project_code}
-            )
+    except httpx.TimeoutException:
+         raise HTTPException(
+            status_code=504,
+            detail={"error": "Gateway Timeout", "message": f"External API timeout", "project_code": project_code}
+         )
+    except httpx.ConnectError as e:
+         raise HTTPException(
+            status_code=503,
+            detail={"error": "Service Unavailable", "message": "Cannot connect to external service", "project_code": project_code}
+         )
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "Bad Gateway", "message": str(e), "project_code": project_code}
+        )
          
     if response.status_code >= 400:
         try:

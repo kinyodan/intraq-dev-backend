@@ -1288,7 +1288,7 @@ async def processing_session_data(
     project_code: str = Form(...),
     norm: int = Form(...), 
     remote_file: HttpUrl = Form(...), 
-    headless: bool = Form(...), 
+    headless: bool = False, 
     current_user: dict = Depends(get_current_user), 
     db: Session = Depends(get_db),
 ):

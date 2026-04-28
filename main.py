@@ -1283,15 +1283,16 @@ def get_project(
 
 
 
-@app.get("/api/process_session_data/{project_code}")
+@app.post("/api/process_session_data")
 async def processing_session_data(
-    project_code: str,
-    norm: int, 
-    remote_file: HttpUrl, 
-    headless: bool = False, 
+    project_code: str = Form(...),
+    norm: int = Form(...), 
+    remote_file: HttpUrl = Form(...), 
+    headless: bool = Form(...), 
     request: DataProcessingRequest = None, 
     current_user: dict = Depends(get_current_user), 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Process session data by calling an external automation microservice.

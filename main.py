@@ -1303,7 +1303,7 @@ async def processing_session_data(
     params = {"norm": norm,"remote_file": str(remote_file),"headless": headless }
      
     try:
-
+        print(f"DEBUG: httpx is {type(httpx)}")
         async with httpx.AsyncClient(timeout=EXTERNAL_API_TIMEOUT) as client:
              response = await client.post(external_api_url, params=params)
 

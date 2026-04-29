@@ -1301,7 +1301,7 @@ async def processing_session_data(
     EXTERNAL_API_TIMEOUT = 30.0
     external_api_url = f"{EXTERNAL_API_BASE_URL}/run"
      
-    params = {
+    payload = {
         "norm": norm,
         "remote_file": str(remote_file),
         "headless": headless , 

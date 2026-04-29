@@ -1301,12 +1301,30 @@ async def processing_session_data(
     EXTERNAL_API_TIMEOUT = 30.0
     external_api_url = f"{EXTERNAL_API_BASE_URL}/run"
      
-    params = {"norm": norm,"remote_file": str(remote_file),"headless": headless , "automation_file": f"{EXTERNAL_AUTOMATION_FILE_BASE_URL}{project_code}_automation.py"}
+    params = {
+        "norm": norm,
+        "remote_file": str(remote_file),
+        "headless": headless , 
+        "automation_file": f"{project_code}_automation.py"
+    }
      
     try:
-        print(f"DEBUG: httpx is {type(httpx)}")
+        print(f"DEBUG: Calling automation service: {external_api_url}")
+        print(f"DEBUG: Payload: {payload}")
+
         async with httpx.AsyncClient(timeout=EXTERNAL_API_TIMEOUT) as client:
-             response = await client.post(external_api_url, params=params)
+            response = await client.post(
+                external_api_url, 
+                json=payload,           # Use json= instead of params=
+                headers={"Content-Type": "application/json"}
+            )
+
+        print(f"DEBUG: Response status: {response.status_code}")
+        print(f"DEBUG: Response body: {response.text}")
+
+        response.raise_for_status()   # Raise error for 4xx/5xx
+
+        return response.json()
 
     except httpx.TimeoutException:
         raise HTTPException(
@@ -1325,7 +1343,16 @@ async def processing_session_data(
             status_code=502,
             detail={"error": "Bad Gateway", "message": str(e), "project_code": project_code}
         )
-         
+    except httpx.HTTPStatusError as exc:
+            print(f"DEBUG: HTTP error {exc.response.status_code}: {exc.response.text}")
+            raise HTTPException(
+                status_code=exc.response.status_code, 
+                detail=f"Automation service returned error: {exc.response.text}"
+            )
+    except Exception as e:
+        print(f"DEBUG: Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
     if response.status_code >= 400:
         try:
             error_detail = response.json()

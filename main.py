@@ -1283,7 +1283,6 @@ def get_project(
         db.close()
 
 
-
 @app.post("/api/process_session_data")
 async def processing_session_data(
     project_code: str = Form(...),
@@ -1313,10 +1312,9 @@ async def processing_session_data(
         print(f"DEBUG: Payload: {payload}")
 
         async with httpx.AsyncClient(timeout=EXTERNAL_API_TIMEOUT) as client:
-            response = await client.post(
-                external_api_url, 
-                json=payload,           # Use json= instead of params=
-                headers={"Content-Type": "application/json"}
+          response = await client.post(
+                external_api_url,
+                params=payload
             )
 
         print(f"DEBUG: Response status: {response.status_code}")

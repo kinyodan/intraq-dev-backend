@@ -39,7 +39,8 @@ from services.delete_service import (
     permanently_delete_project, # NEW
 )
 from services.gcs_service import (    
-    create_user_gcs_structure
+    create_user_gcs_structure,
+    create_project_gcs_structure
 )
 
 app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
@@ -1131,6 +1132,7 @@ async def upload_dataset(
     datasets: Dict = {}
     task_ids = []
     # We'll keep this simple — one project_code per request
+    create_project_gcs_structure(client_id, project_code)
 
     datasets[project_code] = {
         "name": project_name.replace("_", " "),
@@ -1318,6 +1320,7 @@ def get_project(
 
         datasets = {}
         for ds in q.all():
+            create_project_gcs_structure(ds.client_id, ds.project_code)
             datasets[ds.project_code] = datasets.get(ds.project_code , {"datasets": []  } )
             dataset_schema = ds.schema
             

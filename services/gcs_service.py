@@ -23,7 +23,7 @@ def get_gcs_client():
 def create_user_gcs_structure(client_id: str):
     """Create GCS bucket + subfolders for the new user"""
 
-	if not client_id 
+	if not client_id: 
 		print(f"Missing client_id .")
 		raise HTTPException(status_code=500, detail=f"Failed to create storage structure: Missing client_id.")
 
@@ -66,7 +66,7 @@ def create_user_gcs_structure(client_id: str):
 
 def create_project_gcs_structure(client_id: str, project_code: str, normalized_count: str = 10):
 
-	if not client_id 
+	if not client_id: 
 		print(f"Missing client_id .")
 		raise HTTPException(status_code=500, detail=f"Failed to create storage structure: Missing client_id.")
 

@@ -51,7 +51,7 @@ def create_user_gcs_structure(client_id: str, normalized_count: str = 10):
         ]
 
         for i in range(1,normalized_count+1):
-        	subfolders.append(f"{root_folder_name}/normalized{i}")
+        	subfolders.append(f"{root_folder_name}/normalized{i}/")
 
         for folder in subfolders:
             blob = bucket.blob(folder)

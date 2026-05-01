@@ -575,7 +575,7 @@ async def login(
         )
 
     try:
-        bucket_name = create_user_gcs_structure(client_id)
+        bucket_name = create_user_gcs_structure(user.client_id)
     except Exception as gcs_error:
         # Optional: You can log it and continue, or fail the signup
         print(f"Warning: GCS setup failed but continuing signup: {gcs_error}")

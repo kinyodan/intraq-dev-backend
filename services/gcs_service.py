@@ -26,7 +26,8 @@ def create_user_gcs_structure(client_id: str, normalized_count: str = 10):
         storage_client = get_gcs_client()   # Uses default credentials (service account / ADC)
 
         # Option 1: Create a dedicated bucket per user (recommended for isolation)
-        bucket_name = f"user-{client_id.lower()}".replace("_", "-")
+        bucket_name = "intraq-automations"
+        root_folder_name = f"user-{client_id.lower()}".replace("_", "-")
         # Bucket names must be globally unique and follow GCS rules (lowercase, no underscores)
 
         bucket = storage_client.bucket(bucket_name)
@@ -39,18 +40,18 @@ def create_user_gcs_structure(client_id: str, normalized_count: str = 10):
 
         # Create subfolders (in GCS, folders are simulated by uploading a blob with trailing slash)
         subfolders = [
-            "uploads/",
-            "pipelines/",
-            "progress/",
-            "automations/",           # for your automation files
-            "base_files/",
-            "normalized_base/",
-            "processed/",
-            "logs/"
+            f"{root_folder_name}/uploads/",
+            f"{root_folder_name}/pipelines/",
+            f"{root_folder_name}/progress/",
+            f"{root_folder_name}/automations/",           # for your automation files
+            f"{root_folder_name}/base_files/",
+            f"{root_folder_name}/normalized_base/",
+            f"{root_folder_name}/processed/",
+            f"{root_folder_name}/logs/"
         ]
 
-        for i in range(1,normalized_count):
-        	subfolders.append(f"normalized{i}")
+        for i in range(1,normalized_count+1):
+        	subfolders.append(f"{root_folder_name}/normalized{i}")
 
         for folder in subfolders:
             blob = bucket.blob(folder)

@@ -36,7 +36,10 @@ from services.delete_service import (
     soft_delete_project,      # NEW
     restore_project,          # NEW
     list_trashed_projects,    # NEW
-    permanently_delete_project # NEW
+    permanently_delete_project, # NEW
+)
+from services.gcs_service import (    
+    create_user_gcs_structure
 )
 
 app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
@@ -516,6 +519,14 @@ async def signup(
     client_id = generate_client_id()  # Your function
     sub = f"user-{db.query(User).count() + 1}"  # Or use uuid.uuid4()
 
+    # Create GCS bucket + subfolders BEFORE saving user (or after - your choice)
+    try:
+        bucket_name = create_user_gcs_structure(client_id)
+    except Exception as gcs_error:
+        # Optional: You can log it and continue, or fail the signup
+        print(f"Warning: GCS setup failed but continuing signup: {gcs_error}")
+        bucket_name = None
+
     new_user = User(
         username=username,
         email=email.lower(),
@@ -531,7 +542,8 @@ async def signup(
         "message": "User created successfully",
         "username": username,
         "email": email,
-        "client_id": client_id
+        "client_id": client_id,
+        "gcs_bucket": bucket_name,
     }
 
 @app.post("/login")
@@ -561,6 +573,13 @@ async def login(
                 "message": "Username or password is incorrect"
             }
         )
+
+    try:
+        bucket_name = create_user_gcs_structure(client_id)
+    except Exception as gcs_error:
+        # Optional: You can log it and continue, or fail the signup
+        print(f"Warning: GCS setup failed but continuing signup: {gcs_error}")
+        bucket_name = None
 
     # Generate session
     session_id = secrets.token_urlsafe(32)

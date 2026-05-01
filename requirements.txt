@@ -21,3 +21,4 @@ redis==5.0.1
 cloudinary
 alembic
 httpx
+google-cloud-storage

@@ -100,8 +100,8 @@ def create_project_gcs_structure(client_id: str, project_code: str, normalized_c
             f"{root_folder_name}/{project_code}/logs/"
         ]
 
-        for i in range(1,normalized_count+1):
-        	subfolders.append(f"{root_folder_name}/{project_code}/normalized{i}/")
+        for i in range(1, normalized_count + 1):
+            subfolders.append(f"{root_folder_name}/{project_code}/normalized{i}/")
 
         for folder in subfolders:
             blob = bucket.blob(folder)

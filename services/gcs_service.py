@@ -21,7 +21,6 @@ def get_gcs_client():
 
 
 def create_user_gcs_structure(client_id: str):
-    """Create GCS bucket + subfolders for the new user"""
     
     try:
         storage_client = get_gcs_client()   # Uses default credentials (service account / ADC)

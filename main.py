@@ -1,12 +1,13 @@
-from fastapi import FastAPI, Request, Form, HTTPException, Depends, BackgroundTasks, APIRouter, Query, UploadFile, File
+from fastapi import FastAPI, Request, Header, Form, HTTPException, Depends, BackgroundTasks, APIRouter, Query, UploadFile, File
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
 import httpx
+import time
 from fastapi.middleware.cors import CORSMiddleware
 from alembic import command
 from alembic.config import Config
 from pydantic import BaseModel, EmailStr, HttpUrl
-from jose import jwt, JWTError
+from jose import jwt, JWTError, ExpiredSignatureError
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 import secrets, time, urllib.parse, re, hashlib, base64
@@ -687,6 +688,63 @@ async def authorize(request: Request, response_type: str, client_id: str, redire
     </body></html>
     """
     return HTMLResponse(html)
+
+@app.get("/verify-token")
+async def verify_token_endpoint(authorization: str = Header(None)):
+    """
+    Verify JWT access token for internal microservices.
+    Header:
+        Authorization: Bearer <token>
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing Authorization header"
+        )
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Authorization format"
+        )
+
+    token = authorization.replace("Bearer ", "").strip()
+
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=[JWT_ALG]
+        )
+
+        return {
+            "valid": True,
+            "user": {
+                "sub": payload.get("sub"),
+                "username": payload.get("username"),
+                "client_id": payload.get("client_id"),
+                "scope": payload.get("scope"),
+                "exp": payload.get("exp")
+            }
+        }
+
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Token expired"
+        )
+
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Token verification failed: {str(e)}"
+        )
 
 @app.post("/set_package")
 async def set_client_package(

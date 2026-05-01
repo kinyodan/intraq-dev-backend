@@ -1236,6 +1236,8 @@ def list_datasets(client_id: str = Query(None),
             datasets[qs.project_code] = {"datasets": []  } 
 
         for ds in q.all():
+            create_project_gcs_structure(ds.client_id, ds.project_code)
+
             datasets[qs.project_code] = {"datasets": []  } 
             dataset_schema = ds.schema
             try:

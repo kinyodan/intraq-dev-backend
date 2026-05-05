@@ -3,6 +3,9 @@ from google.cloud import storage
 import os
 from dotenv import load_dotenv
 from fastapi import HTTPException
+from pathlib import Path
+
+MOUNT_ROOT = Path("/mnt/intraq-automations")  # your actual mount path
 
 
 def get_gcs_client():
@@ -119,3 +122,64 @@ def create_project_gcs_structure(client_id: str, project_code: str, normalized_c
         raise HTTPException(status_code=500, detail=f"Failed to create storage structure: {str(e)}")
 
 
+def get_project_bucket_folder(client_id: str, project_code: str):
+    folder_path = None
+
+    try:
+        root_folder_name = f"user-{client_id.lower()}".replace("_", "-")
+        project_code = project_code.lower()
+
+        folder_path = MOUNT_ROOT / root_folder_name / project_code
+
+    except Exception as e:
+        error = f"problem connecting or setting up client connection to gcp bucket: {e}"
+        print(error)
+        raise HTTPException(status_code=500, detail=error)
+
+    return folder_path
+
+
+def get_directory_tree(client_id: str, project_code: str):
+    """
+    Recursively get folders + files for frontend display only.
+    """
+    items = []
+    folder_path = get_project_bucket_folder(client_id, project_code)
+
+    if not folder_path:
+        return None
+
+    items = fetch_directory_data(folder_path)   
+    return items
+
+def fetch_directory_data(path: Path):
+    path = Path(path)   # convert string -> Path
+
+    items = []
+    try:
+        for item in sorted(path.iterdir(), key=lambda x: (x.is_file(), x.name.lower())):
+
+            item_data = {
+                "name": item.name,
+                "path": str(item.relative_to(path)),
+                "type": "folder" if item.is_dir() else "file",
+                "size": None,
+                "modified_at": datetime.fromtimestamp(
+                    item.stat().st_mtime
+                ).isoformat()
+            }
+
+            if item.is_file():
+                item_data["size"] = item.stat().st_size
+
+            if item.is_dir():
+                item_data["children"] = get_directory_tree(item)
+
+            items.append(item_data)
+
+    except PermissionError:
+        raise HTTPException(status_code=403, detail=f"Permission denied: {folder_path}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error in get_directory_tree: {e}")  
+
+    return items               

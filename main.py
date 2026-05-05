@@ -40,7 +40,8 @@ from services.delete_service import (
 )
 from services.gcs_service import (    
     create_user_gcs_structure,
-    create_project_gcs_structure
+    create_project_gcs_structure,
+    get_directory_tree
 )
 
 app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
@@ -121,6 +122,7 @@ app.add_middleware(
         "http://localhost:3000",      # For local development
         "http://localhost:3001",      # For local development
         "http://127.0.0.1:3000",      # For local development
+        "http://127.0.0.1",      # For local development
         "https://intraqapp.simokai.com",
         "https://intraq.simokai.com",
         "https://intraq-ui.vercel.app",
@@ -167,7 +169,6 @@ class EmailResponse(BaseModel):
     total_sent: int
     total_failed: int
 
-
 class DataProcessingRequest(BaseModel):
     remote_file: str
     headless: bool
@@ -176,9 +177,13 @@ class SoftDeleteRequest(BaseModel):
     reason: Optional[str] = None
     permanent_delete_days: int = 30
 
-
 class RestoreRequest(BaseModel):
     pass  # Empty body, just confirmation
+
+
+class StorageBucketRequest(BaseModel):
+    client_id: str
+    project_code: str
 
 
 class EmailService:
@@ -1458,7 +1463,23 @@ async def processing_session_data(
         "requested_params": params,
         "processed_at": datetime.utcnow().isoformat()
     }
-                    
+        
+@app.get("/storage/folders")
+def list_bucket_contents(
+    project_code: str = Form(...),
+    client_id: str = Form(...),
+    #current_user: dict = Depends(get_current_user)
+):
+    """
+    Returns full folder tree from mounted GCS bucket.
+    """
+
+    return {
+        "status": True,
+        "message": "Project folders data",
+        "contents": get_directory_tree(client_id, project_code)
+    }
+
 # ───────────────────────────────────────────────────────────────────────────
 # PROJECT-LEVEL SOFT DELETE ENDPOINTS
 # ───────────────────────────────────────────────────────────────────────────

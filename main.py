@@ -1382,8 +1382,8 @@ async def processing_session_data(
     """
     Process session data by calling an external automation microservice.
     """
-    EXTERNAL_API_BASE_URL = "https://intraq-automations-16520908241.europe-west1.run.app"
-    EXTERNAL_AUTOMATION_FILE_BASE_URL = "https://storage.googleapis.com/intraq-automations/automations/"
+    EXTERNAL_API_BASE_URL = os.getenv("EXTERNAL_API_BASE_URL", "https://intraq-automations-16520908241.europe-west1.run.app") 
+    EXTERNAL_AUTOMATION_FILE_BASE_URL = os.getenv("EXTERNAL_AUTOMATION_FILE_BASE_URL", "https://storage.googleapis.com/intraq-automations/automations/") 
     EXTERNAL_API_TIMEOUT = 30.0
     external_api_url = f"{EXTERNAL_API_BASE_URL}/run"
      

@@ -75,8 +75,8 @@ bearer_scheme = HTTPBearer()
 # ======================
 JWT_SECRET = "replace-this-with-long-random-secret"
 JWT_ALG = "HS256"
-ACCESS_TOKEN_EXPIRE = 60 * 60 * 24              # 1 minutes
-REFRESH_TOKEN_EXPIRE = 60 * 60 * 24   # 1 day
+ACCESS_TOKEN_EXPIRE = 60 * 60 * 24 * 7              # 1 minutes
+REFRESH_TOKEN_EXPIRE = 60 * 60 * 24 * 7   # 1 day
 ISSUER = "https://auth.nx.com"        # your auth server domain
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
 

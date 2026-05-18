@@ -232,7 +232,7 @@ class IntraqTemplates:
         sender_full_name:  str = "Daniel Kinyo",
         sender_title: str = "Founder, Intraq",
         recipient_name: str = None
-    ) -> EmailTemplate:
+    ):
         """Introduction email template with dynamic parameters"""
         
         # Use recipient_name if provided, otherwise fallback to first_name
@@ -356,7 +356,7 @@ class IntraqTemplates:
         </html>
         """
 
-        return EmailTemplateV2(
-            subject=base_subject,
-            html_content=html_content
-        )       
+        return {
+            "subject": base_subject,
+            "html_content": html_content
+        }       

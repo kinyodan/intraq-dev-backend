@@ -127,7 +127,7 @@ class EmailService:
 
 # Email templates for Intraq
 class IntraqTemplates:
-    @staticmethod
+
     def get_introduction_template(requirements: Optional[Dict] = None) -> EmailTemplate:
         base_subject = "Transform Your Data Strategy with Intraq - Reliable Data Solutions for Africa"
         
@@ -195,7 +195,6 @@ class IntraqTemplates:
             html_content=html_content
         )
 
-    @staticmethod
     def get_follow_up_template() -> EmailTemplate:
         return EmailTemplate(
             subject="Following up: Data Solutions for {{company}}",
@@ -227,7 +226,6 @@ class IntraqTemplates:
             """
         )
 
-    @staticmethod
     def get_introduction_template_v2(
         first_name: str = "",
         company: str = "your organization",

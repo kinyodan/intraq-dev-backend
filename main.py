@@ -102,7 +102,8 @@ SESSIONS = {}
 REFRESH_TOKENS = {}
 
 # Initialize Resend
-resend.api_key = os.getenv("RESEND_API_KEY", "re_ERQvhkZw_HyaFrLm1Fir7xLvw9PpazyQr")
+resend.api_key = os.getenv("RESEND_API_KEY", "re_L7GET6YB_9SmX2f257av61Xon1f6jz4FS")
+EMAIL_DEFAULT_FROM "danielkinyo@intraq.pro"
 
 # Assume pwd_ctx is your password hasher (e.g., passlib)
 from passlib.context import CryptContext
@@ -1026,6 +1027,96 @@ async def get_projects(
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error fetching projects: {e}")
+
+# ======================
+# SEND EMAIL ENDPOINT
+# ======================
+@app.post("/api/emails/send")
+async def send_email(
+    to: str = Form(...),
+    first_name: str = Form(...), 
+    company: str = Form(...), 
+    sender_full_name: str = Form(...), 
+    sender_title: str = Form(...), 
+    recipient_name: str = Form(...), 
+    reply_to: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """Send a single email using Resend"""
+    try:
+
+        template = await IntraqTemplates.get_introduction_template_v2(
+            first_name: ,
+            company,
+            sender_full_name,
+            sender_title,
+            recipient_name
+        )
+
+        params = {
+            "from": EMAIL_DEFAULT_FROM,
+            "to": [to],
+            "subject": template.get("subject"),
+            "html": template.get("html_content"),
+        }
+        if reply_to: 
+            params["reply_to"] = reply_to
+
+        response = resend.Emails.send(template)
+        
+        return {
+            "success": True,
+            "message": "Email sent successfully",
+            "message_id": response.get("id"),
+            "to": to
+        }
+        
+    except Exception as e:
+        print(f"Send email error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+
+
+# ======================
+# RECEIVE EMAIL WEBHOOK (Inbound)
+# ======================
+@app.post("/webhook/inbound")
+async def resend_inbound_webhook(request: Request):
+    """Resend Inbound Email Webhook - Receives replies and incoming emails"""
+    try:
+        payload = await request.json()
+        
+        if payload.get("type") == "email.received":
+            data = payload.get("data", {})
+            
+            email_data = {
+                "email_id": data.get("email_id"),
+                "from": data.get("from"),
+                "to": data.get("to"),
+                "subject": data.get("subject"),
+                "text": data.get("text"),
+                "html": data.get("html"),
+                "received_at": data.get("created_at"),
+                "attachments": data.get("attachments", [])
+            }
+            
+            print(f"📧 New inbound email received from {email_data['from']}")
+            print(f"Subject: {email_data['subject']}")
+            
+            # TODO: Process the email (save to DB, create ticket, auto-reply, etc.)
+            # Example: await process_inbound_email(email_data)
+            
+            return {"status": "success", "message": "Email received"}
+        
+        return {"status": "ignored", "type": payload.get("type")}
+        
+    except Exception as e:
+        print(f"Inbound webhook error: {e}")
+        # Still return 200 so Resend doesn't retry
+        return JSONResponse(
+            status_code=200,
+            content={"status": "error", "message": "Webhook received but processing failed"}
+        )
+
 
 # ======================
 # DATABASE MIGRATION ENDPOINTS

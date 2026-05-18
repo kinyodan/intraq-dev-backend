@@ -270,6 +270,9 @@ class IntraqTemplates:
                     text-align: center;
                     border-bottom: 3px solid #f97316;
                 }}
+                .header .intro-heading {{
+                    color: #cbd5e1;
+                }}
                 .logo {{
                     font-size: 34px;
                     font-weight: 800;
@@ -323,7 +326,7 @@ class IntraqTemplates:
             <div class="container">
                 <div class="header">
                     <div class="logo">intra<span>q</span></div>
-                    <h1>Data Operations for Impact</h1>
+                    <h1 class="intro-heading">Data Operations for Impact</h1>
                 </div>
 
                 <div class="content">

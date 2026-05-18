@@ -1046,7 +1046,7 @@ async def send_email(
     """Send a single email using Resend"""
     try:
 
-        template = await IntraqTemplates.get_introduction_template_v2(
+        template = IntraqTemplates.get_introduction_template_v2(
             first_name,
             company,
             sender_full_name,

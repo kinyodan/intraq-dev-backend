@@ -1057,8 +1057,8 @@ async def send_email(
         params = {
             "from": EMAIL_DEFAULT_FROM,
             "to": [to],
-            "subject": template.get("subject"),
-            "html": template.get("html_content"),
+            "subject": template["subject"],
+            "html": template["html_content"],
         }
         if reply_to: 
             params["reply_to"] = reply_to

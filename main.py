@@ -1,9 +1,11 @@
-from fastapi import FastAPI, Request, Header, Form, HTTPException, Depends, BackgroundTasks, APIRouter, Query, UploadFile, File
+from fastapi import FastAPI, Request, Header, Form, HTTPException, Depends, BackgroundTasks, APIRouter, Query, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import time
-from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+from typing import Dict, Set
 from alembic import command
 from alembic.config import Config
 from pydantic import BaseModel, EmailStr, HttpUrl
@@ -29,6 +31,7 @@ import uuid  # or your generate_client_id()
 from celery import Celery
 from datetime import datetime
 from services.email_service import IntraqTemplates
+from services.telegram_service import send_telegram_msg 
 from services.delete_service import (
     soft_delete_dataset,
     restore_dataset,
@@ -137,6 +140,53 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ======================
+# WEBSOCKET MANAGER
+# ======================
+class ConnectionManager:
+    """Manages WebSocket connections grouped by client_id"""
+    
+    def __init__(self):
+        # Dictionary mapping client_id -> set of WebSocket connections
+        self.active_connections: Dict[str, Set[WebSocket]] = {}
+    
+    async def connect(self, websocket: WebSocket, client_id: str):
+        """Register a new WebSocket connection for a client_id"""
+        await websocket.accept()
+        if client_id not in self.active_connections:
+            self.active_connections[client_id] = set()
+        self.active_connections[client_id].add(websocket)
+        print(f"✅ WebSocket connected: client_id={client_id}, total connections: {len(self.active_connections[client_id])}")
+    
+    def disconnect(self, websocket: WebSocket, client_id: str):
+        """Remove a WebSocket connection"""
+        if client_id in self.active_connections:
+            self.active_connections[client_id].discard(websocket)
+            if not self.active_connections[client_id]:
+                del self.active_connections[client_id]
+            print(f"❌ WebSocket disconnected: client_id={client_id}")
+    
+    async def send_message_to_client(self, client_id: str, message: dict):
+        """Broadcast a message to all connections for a specific client_id"""
+        if client_id not in self.active_connections:
+            print(f"⚠️ No active connections for client_id={client_id}")
+            return
+        
+        disconnected = set()
+        for connection in self.active_connections[client_id]:
+            try:
+                await connection.send_json(message)
+            except Exception as e:
+                print(f"⚠️ Failed to send to client {client_id}: {e}")
+                disconnected.add(connection)
+        
+        # Clean up disconnected connections
+        for conn in disconnected:
+            self.active_connections[client_id].discard(conn)
+
+# Global connection manager
+ws_manager = ConnectionManager()
 
 
 # ======================
@@ -1078,11 +1128,42 @@ async def send_email(
 
 
 # ======================
+# WEBSOCKET ENDPOINT
+# ======================
+@app.websocket("/ws/inbound_email/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    """
+    WebSocket endpoint for real-time inbound email notifications.
+    
+    Connect with: WS /ws/{client_id}
+    Example: wss://intraq-backend.onrender.com/ws/CLG2WTPQ9X
+    
+    The client_id is used to route inbound email webhooks to the correct connection(s).
+    """
+    await ws_manager.connect(websocket, client_id)
+    try:
+        while True:
+            # Keep connection alive and wait for messages from client
+            data = await websocket.receive_text()
+            print(f"📨 Received message from client {client_id}: {data}")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket, client_id)
+        print(f"🔌 WebSocket disconnected: client_id={client_id}")
+
+
+# ======================
 # RECEIVE EMAIL WEBHOOK (Inbound)
 # ======================
 @app.post("/webhook/inbound")
-async def resend_inbound_webhook(request: Request):
-    """Resend Inbound Email Webhook - Receives replies and incoming emails"""
+async def resend_inbound_webhook(request: Request, client_id: str = Query(None)):
+    """Resend Inbound Email Webhook - Receives replies and incoming emails
+    
+    Query params:
+        - client_id: The client identifier to broadcast the email to (e.g., CLG2WTPQ9X)
+    
+    When client_id is provided, the email data will be broadcast via WebSocket
+    to all connected clients listening on that client_id channel.
+    """
     try:
         payload = await request.json()
         
@@ -1103,6 +1184,14 @@ async def resend_inbound_webhook(request: Request):
             print(f"📧 New inbound email received from {email_data['from']}")
             print(f"Subject: {email_data['subject']}")
             
+            # Broadcast to WebSocket clients if client_id is provided
+            if client_id:
+                print(f"📡 Broadcasting to client_id={client_id}")
+                await ws_manager.send_message_to_client(client_id, {
+                    "type": "inbound_email",
+                    "data": email_data
+                })
+            send_telegram_msg(email_data)
             # TODO: Process the email (save to DB, create ticket, auto-reply, etc.)
             # Example: await process_inbound_email(email_data)
             

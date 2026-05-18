@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 import uuid  # or your generate_client_id()
 from celery import Celery
 from datetime import datetime
-from services.email_service import get_introduction_template, get_follow_up_template, get_introduction_template_v2
+from services.email_service import IntraqTemplates
 from services.delete_service import (
     soft_delete_dataset,
     restore_dataset,

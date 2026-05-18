@@ -356,7 +356,7 @@ class IntraqTemplates:
         </html>
         """
 
-        return EmailTemplateV2(
-            subject=base_subject,
-            html_content=html_content
-        )       
+        return{
+            "subject": base_subject,
+            "html_content": html_content
+        }       

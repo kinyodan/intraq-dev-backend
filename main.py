@@ -1063,7 +1063,7 @@ async def send_email(
         if reply_to: 
             params["reply_to"] = reply_to
 
-        response = resend.Emails.send(template)
+        response = resend.Emails.send(params)
         
         return {
             "success": True,

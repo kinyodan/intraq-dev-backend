@@ -103,7 +103,7 @@ REFRESH_TOKENS = {}
 
 # Initialize Resend
 resend.api_key = os.getenv("RESEND_API_KEY", "re_L7GET6YB_9SmX2f257av61Xon1f6jz4FS")
-EMAIL_DEFAULT_FROM "danielkinyo@intraq.pro"
+EMAIL_DEFAULT_FROM = "danielkinyo@intraq.pro"
 
 # Assume pwd_ctx is your password hasher (e.g., passlib)
 from passlib.context import CryptContext

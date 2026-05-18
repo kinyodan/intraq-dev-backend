@@ -1046,7 +1046,7 @@ async def send_email(
     try:
 
         template = await IntraqTemplates.get_introduction_template_v2(
-            first_name: ,
+            first_name,
             company,
             sender_full_name,
             sender_title,

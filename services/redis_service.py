@@ -6,17 +6,15 @@ from datetime import datetime
 
 REDIS_DB = init_redis_db() if init_redis_db is not None else None
 
-
 async def save_email_to_redis(client_id: str, email_data: dict):
     if not REDIS_DB:
         print("❌ Redis not connected")
         return False
 
     try:
-        # Create the Redis key
         email_key = f"client:{client_id}:emails:{email_data.get('from', 'unknown')}"
 
-        # Prepare data (convert complex types to strings)
+        # Prepare clean data
         clean_data = {}
         for key, value in email_data.items():
             if isinstance(value, (dict, list)):
@@ -28,11 +26,9 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
         clean_data["saved_at"] = datetime.utcnow().isoformat()
 
-        # ✅ Correct hset syntax for Redis 5.x
-        REDIS_DB.hset(
-            email_key,           # This is the Redis key (no 'name=')
-            mapping=clean_data   # Use 'mapping' instead of kwargs
-        )
+        # ✅ Correct syntax for older redis-py (v4 and below)
+        for field, value in clean_data.items():
+            REDIS_DB.hset(email_key, field, value)
 
         print(f"✅ Email saved successfully to Redis → {email_key}")
         return True

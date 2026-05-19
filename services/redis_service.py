@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from redis_db import init_redis_db
 
-REDIS_DB = init_redis_db || None
+REDIS_DB = init_redis_db() if init_redis_db is not None else None
 
 async def save_email_to_redis(client_id: str, email_data: dict):
 

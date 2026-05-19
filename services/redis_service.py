@@ -3,7 +3,7 @@ import json
 from redis_db import init_redis_db
 from datetime import datetime
 from typing import Dict, Set
-from text_extraction_service import extract_email_reply_snippet
+from services.text_extraction_service import extract_email_reply_snippet
 
 REDIS_DB = init_redis_db() if init_redis_db is not None else None
 

@@ -12,7 +12,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
         return False
 
     try:
-        email_key = f"client:{client_id}:emails:{email_data.get('from', 'unknown')}"
+        email_key = f"client:{client_id}:emails:{email_data.get('from', 'unknown')}:{email_data["email_id"]}"
 
         # Prepare clean data
         clean_data = {}

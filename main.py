@@ -1106,7 +1106,7 @@ async def get_client_emails(
         }
         return result
 
-     except Exception as e:
+    except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error fetching client emails")   
 
 # ======================

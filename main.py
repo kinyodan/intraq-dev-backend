@@ -1088,6 +1088,28 @@ async def get_projects(
         raise HTTPException(status_code=400, detail=f"Error fetching projects: {e}")
 
 # ======================
+# GET EMAILS ENDPOINTS
+# ======================
+app.get("/client/emails/{client_id}"):
+async def get_client_emails(
+    client_id: str,
+    current_user: dict = Depends(get_admin_user)
+):  
+    try:
+        key = f"client:{client_id}:emails"
+        emails = get_emails_sync(key)
+
+        result = {
+            "status": True,
+            "message": "Successfully retrived email data",
+            "data": emails
+        }
+        return result
+
+     except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error fetching client emails")   
+
+# ======================
 # SEND EMAIL ENDPOINT
 # ======================
 @app.post("/api/emails/send")

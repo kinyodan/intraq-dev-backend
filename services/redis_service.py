@@ -66,8 +66,9 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
     try:
         # email_key = f"client:{client_id}:emails:{email_data.get('from', 'unknown')}:{email_data["email_id"]}"
-        email_key = f"client:{client_id}:email:{email_data['email_id']}"
-
+        #email_key = f"client:{client_id}:email:{email_data['email_id']}"
+        email_key = f"client:{client_id}:emails"
+        
         # Prepare clean data
         clean_data = {}
         for key, value in email_data.items():
@@ -82,7 +83,8 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
         # ✅ Correct syntax for older redis-py (v4 and below)
         for field, value in clean_data.items():
-            REDIS_DB.hset(email_key, field, value)
+            REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(clean_data))
+            # REDIS_DB.hset(email_key, field, value)
 
         result = await get_emails_sync(f"client:{client_id}:email")
         print(f"✅ Email saved successfully to Redis → {email_key}")
@@ -94,7 +96,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
 
 async def get_emails_sync(key: str):
-    emails = REDIS_DB.hgetall(key)
+    emails = REDIS_DB.hgetall(f"client:{client_id}:emails")
     print(len("get_emails_sync"))
     print(len(emails))
 

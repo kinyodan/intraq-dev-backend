@@ -87,7 +87,9 @@ async def save_email_to_redis(client_id: str, email_data: dict):
             # REDIS_DB.hset(email_key, field, value)
 
         result = await get_emails_sync(f"client:{client_id}:emails") 
+        full_email_result = await get_emails_sync(f"client:{client_id}:full_email:{email_data.get('from', 'unknown')}:{email_data["email_id"]}") 
         print(f"✅ Email saved successfully to Redis → {email_key}")
+        print(f"✅ Email saved successfully to Redis → {client:{client_id}:full_email:{email_data.get('from', 'unknown')}:{email_data["email_id"]}}")
         return result
 
     except Exception as e:

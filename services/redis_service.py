@@ -23,6 +23,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
                 "subject": email_data.get("subject"),
                 "text": email_data.get("text"),
                 "html": email_data.get("html"),
+                "name": email_data.get("name"),
                 "received_at": email_data.get("received_at"),
                 "full_data": json.dumps(email_data, default=str)
             }

@@ -27,6 +27,7 @@ from db import SessionLocal, engine, DATABASE_URL
 from models import Base, UserSession, AuthCode, User, Dataset, DatasetMeta, Package
 from redis_db import init_redis_db
 from services.redis_service import save_email_to_redis
+from services.resend_service import get_full_email
 from schemas import DatasetCreateResponse, DatasetInfo
 from sqlalchemy.orm import Session
 import uuid  # or your generate_client_id()

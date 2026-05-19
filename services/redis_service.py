@@ -14,7 +14,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
     try:
         # email_key = f"client:{client_id}:emails:{email_data.get('from', 'unknown')}:{email_data["email_id"]}"
         email_key = f"client:{client_id}:email:{email_data['email_id']}"
-        
+
         # Prepare clean data
         clean_data = {}
         for key, value in email_data.items():
@@ -31,9 +31,19 @@ async def save_email_to_redis(client_id: str, email_data: dict):
         for field, value in clean_data.items():
             REDIS_DB.hset(email_key, field, value)
 
+        result = get_emails_sync(f"client:{client_id}:email")
         print(f"✅ Email saved successfully to Redis → {email_key}")
-        return True
+        return result
 
     except Exception as e:
         print(f"❌ Failed to save email to Redis: {e}")
         return False
+
+
+async def get_emails_sync(key: str):
+    emails = hget(key)
+    if !emails:
+        return {}
+
+    return emails 
+

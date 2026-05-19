@@ -1191,7 +1191,12 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
                     "type": "inbound_email",
                     "data": email_data
                 })
-            await send_telegram_msg(email_data)
+            
+            # Send telegram notification (non-blocking, ignore errors)
+            try:
+                await send_telegram_msg(email_data)
+            except Exception as te:
+                print(f"⚠️ Telegram notification skipped: {te}")
             # TODO: Process the email (save to DB, create ticket, auto-reply, etc.)
             # Example: await process_inbound_email(email_data)
             

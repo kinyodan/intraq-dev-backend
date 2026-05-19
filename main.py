@@ -1143,8 +1143,8 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     """
     WebSocket endpoint for real-time inbound email notifications.
     
-    Connect with: WS /ws/{client_id}
-    Example: wss://intraq-backend.onrender.com/ws/CLG2WTPQ9X
+    Connect with: WS /ws/inbound_email/{client_id}
+    Example: wss://intraq-backend.onrender.com/ws/inbound_email/CLG2WTPQ9X
     
     The client_id is used to route inbound email webhooks to the correct connection(s).
     """
@@ -1156,7 +1156,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 await asyncio.sleep(30)
             except Exception:
                 break
-        
+
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket, client_id)
         print(f"🔌 WebSocket disconnected: client_id={client_id}")

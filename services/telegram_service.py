@@ -9,7 +9,7 @@ TELEGRAM_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
 async def send_telegram_msg(message):
 
-    if !TELEGRAM_TOKEN:
+    if not TELEGRAM_TOKEN:
         raise ValueError("TELEGRAM_TOKEN is required")
 
     async with httpx.AsyncClient() as client:

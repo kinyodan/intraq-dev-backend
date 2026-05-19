@@ -86,7 +86,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
             REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(clean_data))
             # REDIS_DB.hset(email_key, field, value)
 
-        result = await get_emails_sync(f"client:{client_id}:email") 
+        result = await get_emails_sync(f"client:{client_id}:emails") 
         print(f"✅ Email saved successfully to Redis → {email_key}")
         return result
 
@@ -97,7 +97,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
 async def get_emails_sync(key: str):
     emails = REDIS_DB.hgetall(key)
-    print(len("get_emails_sync"))
+    print("get_emails_sync")
     print(len(emails))
 
     if not emails:

@@ -169,9 +169,14 @@ class ConnectionManager:
     
     async def send_message_to_client(self, client_id: str, message: dict):
         """Broadcast a message to all connections for a specific client_id"""
+        print(f"📡 Attempting broadcast to client_id={client_id}")
+        print(f"📡 Active connections: {list(self.active_connections.keys())}")
+        
         if client_id not in self.active_connections:
             print(f"⚠️ No active connections for client_id={client_id}")
             return
+        
+        print(f"📡 Sending to {len(self.active_connections[client_id])} connection(s) for {client_id}")
         
         disconnected = set()
         for connection in self.active_connections[client_id]:
@@ -1164,6 +1169,8 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
     When client_id is provided, the email data will be broadcast via WebSocket
     to all connected clients listening on that client_id channel.
     """
+    print(f"📥 Webhook received, client_id={client_id}")
+    
     try:
         payload = await request.json()
         

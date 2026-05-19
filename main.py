@@ -1225,7 +1225,7 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
             #REDIS_DB.hset(f"{client_id}:emails:{email_data['from']}", email_data)
 
             result_data = await save_email_to_redis(client_id, email_data)
-            result_data = await save_email_to_redis(client_id, email_data)
+            # result_data = await save_email_to_redis(client_id, email_data)
 
             # Broadcast to WebSocket clients if client_id is provided
             if client_id:

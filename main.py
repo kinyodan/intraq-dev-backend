@@ -27,6 +27,7 @@ from db import SessionLocal, engine, DATABASE_URL
 from models import Base, UserSession, AuthCode, User, Dataset, DatasetMeta, Package
 from redis_db import init_redis_db
 from services.redis_service import save_email_to_redis
+from services.resend_service import get_full_email
 from schemas import DatasetCreateResponse, DatasetInfo
 from sqlalchemy.orm import Session
 import uuid  # or your generate_client_id()
@@ -1179,6 +1180,8 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
         if payload.get("type") == "email.received":
             data = payload.get("data", {})
             
+            full_email = get_full_email(data.get("email_id"))
+
             email_data = {
                 "email_id": data.get("email_id"),
                 "from": data.get("from"),
@@ -1186,7 +1189,7 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
                 "subject": data.get("subject"),
                 "text": data.get("text"),
                 "html": data.get("html"),
-                "data": data,
+                "data": full_email,
                 "received_at": data.get("created_at"),
                 "attachments": data.get("attachments", [])
             }

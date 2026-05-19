@@ -3,6 +3,7 @@ import json
 from redis_db import init_redis_db
 from datetime import datetime
 from typing import Dict, Set
+from text_extraction_service import extract_email_reply_snippet
 
 REDIS_DB = init_redis_db() if init_redis_db is not None else None
 
@@ -68,7 +69,21 @@ async def save_email_to_redis(client_id: str, email_data: dict):
         # email_key = f"client:{client_id}:emails:{email_data.get('from', 'unknown')}:{email_data["email_id"]}"
         #email_key = f"client:{client_id}:email:{email_data['email_id']}"
         email_key = f"client:{client_id}:emails"
+        email_key_full_email = f"client:{client_id}:full_emails"
         
+        summary_email_data = {
+                "email_id": email_data.get("email_id"),
+                "from": email_data.get("from"),
+                "to": email_data.get("to"),
+                "subject": email_data.get("subject"),
+                "received_at": email_data.get("created_at"),
+            }
+
+        summary_content = extract_email_reply_snippet(email_data.get("full_email"))
+        summary_email_data["summary"] = summary_content
+        summary_email_data["saved_at"] = datetime.utcnow().isoformat()
+
+
         # Prepare clean data
         clean_data = {}
         for key, value in email_data.items():
@@ -83,11 +98,13 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
         # ✅ Correct syntax for older redis-py (v4 and below)
         for field, value in clean_data.items():
-            REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(clean_data))
+            REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(summary_email_data))
+            REDIS_DB.hset(email_key_full_email, email_data["email_id"], json.dumps(clean_data))
             # REDIS_DB.hset(email_key, field, value)
 
         result = await get_emails_sync(f"client:{client_id}:emails") 
         print(f"✅ Email saved successfully to Redis → {email_key}")
+        print(f"✅ Email saved successfully to Redis → {email_key_full_email}")
         return result
 
     except Exception as e:

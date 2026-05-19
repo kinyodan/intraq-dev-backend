@@ -5,13 +5,17 @@ resend.api_key = os.getenv("RESEND_API_KEY")
 
 async def get_full_email(email_id: str):
     try:
-        email = resend.Emails.get_received(email_id)   # or resend.emails.receiving.get()
+        # ✅ Correct method
+        email = resend.emails.receiving.get(email_id)
         
-        print("From:", email['from'])
-        print("Subject:", email['subject'])
+        print("✅ Full email fetched successfully!")
+        print("From:", email.get('from'))
+        print("Subject:", email.get('subject'))
         print("Text Body:", email.get('text'))
         print("HTML Body:", email.get('html'))
         
         return email
+        
     except Exception as e:
-        print("Error fetching email:", e)
+        print(f"❌ Error fetching full email: {e}")
+        return None

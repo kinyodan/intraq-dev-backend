@@ -95,6 +95,9 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
 async def get_emails_sync(key: str):
     emails = REDIS_DB.hgetall(key)
+    print(len("get_emails_sync"))
+    print(len(emails))
+
     if not emails:
         return {"data": False}
   

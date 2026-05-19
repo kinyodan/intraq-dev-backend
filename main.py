@@ -1151,9 +1151,12 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     await ws_manager.connect(websocket, client_id)
     try:
         while True:
-            # Keep connection alive and wait for messages from client
-            data = await websocket.receive_text()
-            print(f"📨 Received message from client {client_id}: {data}")
+            try:
+                await websocket.send_text("ping")
+                await asyncio.sleep(30)
+            except Exception:
+                break
+        
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket, client_id)
         print(f"🔌 WebSocket disconnected: client_id={client_id}")

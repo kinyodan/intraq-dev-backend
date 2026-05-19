@@ -22,3 +22,4 @@ cloudinary
 alembic
 httpx
 google-cloud-storage
+upstash-redis

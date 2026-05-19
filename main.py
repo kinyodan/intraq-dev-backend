@@ -25,6 +25,8 @@ from services.upload_service import handle_upload
 from services.visualization_service import aggregate_for_chart, fetch_table_preview
 from db import SessionLocal, engine, DATABASE_URL
 from models import Base, UserSession, AuthCode, User, Dataset, DatasetMeta, Package
+from redis_db import init_redis_db
+from redis_service import save_email_to_redis
 from schemas import DatasetCreateResponse, DatasetInfo
 from sqlalchemy.orm import Session
 import uuid  # or your generate_client_id()
@@ -49,12 +51,12 @@ from services.gcs_service import (
 )
 
 app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
-REDIS_URL = os.getenv("REDIS_URL","redis://localhost:6379/0")
+REDIS_DB = init_redis_db  #os.getenv("REDIS_DB","redis://localhost:6379/0")
 
 celery_app = Celery(
     'tasks',
-    broker=REDIS_URL,  # Message broker
-    backend=REDIS_URL,  # Result backend
+    broker=REDIS_DB,  # Message broker
+    backend=REDIS_DB,  # Result backend
     broker_connection_retry_on_startup=True
 )
 
@@ -1184,6 +1186,7 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
                 "subject": data.get("subject"),
                 "text": data.get("text"),
                 "html": data.get("html"),
+                "data": data,
                 "received_at": data.get("created_at"),
                 "attachments": data.get("attachments", [])
             }
@@ -1191,6 +1194,10 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
             print(f"📧 New inbound email received from {email_data['from']}")
             print(f"Subject: {email_data['subject']}")
             
+            #REDIS_DB.hset(f"{client_id}:emails:{email_data['from']}", email_data)
+
+            await save_email_to_redis(client_id, email_data)
+
             # Broadcast to WebSocket clients if client_id is provided
             if client_id:
                 print(f"📡 Broadcasting to client_id={client_id}")

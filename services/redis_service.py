@@ -41,7 +41,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
 
 async def get_emails_sync(key: str):
-    emails = hget(key)
+    emails = hgetall(key)
     if !emails:
         return {}
 

@@ -33,7 +33,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
         result = get_emails_sync(f"client:{client_id}:email")
         print(f"✅ Email saved successfully to Redis → {email_key}")
-        return result
+        return json.dump(result)
 
     except Exception as e:
         print(f"❌ Failed to save email to Redis: {e}")

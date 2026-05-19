@@ -1180,7 +1180,7 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
         if payload.get("type") == "email.received":
             data = payload.get("data", {})
             
-            full_email = get_full_email(data.get("email_id"))
+            full_email = await get_full_email(data.get("email_id"))
 
             email_data = {
                 "email_id": data.get("email_id"),

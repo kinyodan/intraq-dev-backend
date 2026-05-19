@@ -1191,7 +1191,7 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
                     "type": "inbound_email",
                     "data": email_data
                 })
-            send_telegram_msg(email_data)
+            await send_telegram_msg(email_data)
             # TODO: Process the email (save to DB, create ticket, auto-reply, etc.)
             # Example: await process_inbound_email(email_data)
             

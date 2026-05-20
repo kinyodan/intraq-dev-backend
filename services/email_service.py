@@ -296,6 +296,10 @@ class IntraqTemplates:
                     color: #cbd5e1;
                     margin-bottom: 20px;
                 }}
+                .signature a {{
+                    color: #f97316;
+                    text-decoration: none;
+                }}
                 .cta-button {{
                     display: inline-block;
                     background: #f97316;
@@ -345,7 +349,7 @@ class IntraqTemplates:
                     <p>Best regards,<br>
                     <strong>{sender_full_name}</strong><br>
                     {sender_title}<br>
-                    <a href="https://intraq.pro">intraq.pro</a> </br>
+                    <span class="signature"><a href="https://intraq.pro">intraq.pro</a></span></br>
                     Nairobi, Kenya</p>
                 </div>
 

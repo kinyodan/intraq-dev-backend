@@ -1097,7 +1097,7 @@ async def get_client_emails(
 ):  
     try:
         key = f"client:{client_id}:emails"
-        emails = get_emails_sync(key)
+        emails = await get_emails_sync(key)
 
         result = {
             "status": True,

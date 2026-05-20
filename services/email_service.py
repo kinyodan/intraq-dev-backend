@@ -238,7 +238,7 @@ class IntraqTemplates:
         # Use recipient_name if provided, otherwise fallback to first_name
         name_to_use = recipient_name or first_name
 
-        base_subject = f"Exploring Data Partnership Opportunities with Intraq - {company or 'Your Organization'}"
+        base_subject = f"Data Partnership with Intraq - {company or 'Your Organization'}"
 
         html_content = f"""
         <!DOCTYPE html>

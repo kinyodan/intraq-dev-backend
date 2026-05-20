@@ -1099,11 +1099,11 @@ async def get_client_emails(
         key = f"client:{client_id}:emails"
         emails = await get_emails_sync(key)
 
-        result = {
-            "status": True,
-            "message": "Successfully retrived email data",
-            "data": emails
-        }
+        return JSONResponse(
+            status_code=200,
+            content={"status": True, "data":emails, "message":  "Successfully retrived email data"}
+        )
+
         return result
 
     except Exception as e:

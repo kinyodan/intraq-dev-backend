@@ -1090,7 +1090,7 @@ async def get_projects(
 # ======================
 # GET EMAILS ENDPOINTS
 # ======================
-app.get("/client/emails/{client_id}")
+@app.get("/client/emails/{client_id}")
 async def get_client_emails(
     client_id: str,
     current_user: dict = Depends(get_admin_user)

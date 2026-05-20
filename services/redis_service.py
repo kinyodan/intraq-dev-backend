@@ -117,27 +117,27 @@ async def get_emails_sync(key: str):
 
     if not emails:
         return {"data": False}
-    result = await normalize_emails(emails)
+    result = normalize_emails(emails)
     return result 
 
 async def normalize_emails(emails):
     normalized_emails = []
 
-    try:
-        for key,email in emails.items():
-            parsed_email = json.parse(email)
-            normalized_email = {
-                "id": parsed_email.get("email_id"),
-                "name": parsed_email.get("from"),
-                "email": parsed_email.get("from"),
-                "subject": parsed_email.get("subject"),
-                "text": parsed_email.get("summary"),
-                "date": parsed_email.get("created_at"),
-                read: False,
-                labels: ['meeting', 'work', 'important'],
-            }
-            normalized_emails.append(normalized_email)
+    # try:
+    for key,email in emails.items():
+        parsed_email = json.parse(email)
+        normalized_email = {
+            "id": parsed_email.get("email_id"),
+            "name": parsed_email.get("from"),
+            "email": parsed_email.get("from"),
+            "subject": parsed_email.get("subject"),
+            "text": parsed_email.get("summary"),
+            "date": parsed_email.get("created_at"),
+            read: False,
+            labels: ['meeting', 'work', 'important'],
+        }
+        normalized_emails.append(normalized_email)
 
-        return normalized_emails    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error normalizing emails: {e}")
+    return normalized_emails    
+    # except Exception as e:
+    #     raise HTTPException(status_code=500, detail=f"Error normalizing emails: {e}")

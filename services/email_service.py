@@ -231,6 +231,7 @@ class IntraqTemplates:
         company: str = "your organization",
         sender_full_name:  str = "Daniel Kinyo",
         sender_title: str = "Founder, Intraq",
+        sender_phone: str = "+254791199816",
         recipient_name: str = None
     ):
         """Introduction email template with dynamic parameters"""
@@ -340,7 +341,7 @@ class IntraqTemplates:
                     
                     <p>I've been following {company}’s work and I'm really impressed with the impact you're making.</p>
                     
-                    <p>I'm the founder of <strong>Intraq</strong>, a Nairobi-based data operations company. We specialize in high-volume data entry, cleaning, and management for development and humanitarian programmes.</p>
+                    <p>I'm the founder of <strong>Intraq</strong>, a data operations company. We specialize in high-volume data entry, cleaning, and management for development and humanitarian programmes.</p>
                     
                     <p>I'd like to connect and explore whether we could support the data needs of your current projects.</p>
                     
@@ -348,15 +349,16 @@ class IntraqTemplates:
                     
                     <p>Best regards,<br>
                     <strong>{sender_full_name}</strong><br>
+                    <strong>{sender_phone}</strong><br>
                     {sender_title}<br>
-                    <span class="signature"><a href="https://intraq.pro">intraq.pro</a></span></br>
+                    <span class="signature"><a href="https://intraq.pro">intraq.pro</a></span>; </br>
                     Nairobi, Kenya</p>
                 </div>
 
                 <div class="footer">
                     <p><strong>Intraq</strong> — Reliable Data Operations for Development & Humanitarian Programmes</p>
                     <p>
-                        <a href="https://intraq.pro">intraq.pro</a> • Nairobi, Kenya
+                        <a href="https://intraq.pro">intraq.pro</a> 
                     </p>
                 </div>
             </div>

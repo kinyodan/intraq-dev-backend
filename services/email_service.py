@@ -231,6 +231,7 @@ class IntraqTemplates:
         company: str = "your organization",
         sender_full_name:  str = "Daniel Kinyo",
         sender_title: str = "Founder, Intraq",
+        sender_phone: str = "+254791199816",
         recipient_name: str = None
     ):
         """Introduction email template with dynamic parameters"""
@@ -348,6 +349,7 @@ class IntraqTemplates:
                     
                     <p>Best regards,<br>
                     <strong>{sender_full_name}</strong><br>
+                    <strong>{sender_phone}</strong><br>
                     {sender_title}<br>
                     <span class="signature"><a href="https://intraq.pro">intraq.pro</a></span>; </br>
                     Nairobi, Kenya</p>

@@ -1104,8 +1104,9 @@ async def get_client_emails(
             content={"status": True, "data":emails, "message":  "Successfully retrived email data"}
         )
 
-    # except Exception as e:
-    #     raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")   
+    except Exception as e:
+        print(e)
+        #raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")   
 
 # ======================
 # SEND EMAIL ENDPOINT

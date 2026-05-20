@@ -345,6 +345,7 @@ class IntraqTemplates:
                     <p>Best regards,<br>
                     <strong>{sender_full_name}</strong><br>
                     {sender_title}<br>
+                    <a href="https://intraq.pro">intraq.pro</a> </br>
                     Nairobi, Kenya</p>
                 </div>
 

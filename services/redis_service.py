@@ -114,11 +114,30 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
 async def get_emails_sync(key: str):
     emails = REDIS_DB.hgetall(key)
-    print("get_emails_sync")
-    print(len(emails))
 
     if not emails:
         return {"data": False}
-  
-    return emails 
+    result = await normalize_emails(emails)
+    return result 
 
+async def normalize_emails(emails):
+    normalized_emails = []
+
+    try:
+        for key,email in emails.items():
+            parsed_email = json.parse(email)
+            normalized_email = {
+                "id": parsed_email.get("email_id"),
+                "name": parsed_email.get("from"),
+                "email": parsed_email.get("from"),
+                "subject": parsed_email.get("subject"),
+                "text": parsed_email.get("summary"),
+                "date": parsed_email.get("created_at"),
+                read: False,
+                labels: ['meeting', 'work', 'important'],
+            }
+            normalized_emails.append(normalized_email)
+
+        return normalized_emails    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error normalizing emails: {e}")

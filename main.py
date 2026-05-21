@@ -1118,6 +1118,7 @@ async def send_email(
     company: str = Form(...), 
     sender_full_name: str = Form(...), 
     sender_title: str = Form(...), 
+    sender_phone: str = Form(...), 
     recipient_name: str = Form(...), 
     reply_to: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user)
@@ -1130,6 +1131,7 @@ async def send_email(
             company,
             sender_full_name,
             sender_title,
+            sender_phone,
             recipient_name
         )
 

@@ -1113,7 +1113,7 @@ async def get_client_emails(
 # ======================
 @app.post("/api/emails/send")
 async def send_email(
-    to: List[str] = Form(...),
+    to: str = Form(...),
     cc: Optional[List[str]] = Form(None),
     first_name: str = Form(...), 
     company: str = Form(...), 
@@ -1127,6 +1127,11 @@ async def send_email(
     """Send a single email using Resend"""
     try:
 
+        to_list = ast.literal_eval(to)
+
+        print(to_list)
+        print(type(to_list))
+
         template = IntraqTemplates.get_introduction_template_v2(
             first_name,
             company,
@@ -1138,7 +1143,7 @@ async def send_email(
 
         params = {
             "from": EMAIL_DEFAULT_FROM,
-            "to": [to],
+            "to": to_list,
             "subject": template["subject"],
             "html": template["html_content"],
         }
@@ -1155,7 +1160,7 @@ async def send_email(
             "success": True,
             "message": "Email sent successfully",
             "message_id": response.get("id"),
-            "to": to,
+            "to": to_list,
             "cc": cc
         }
         

@@ -66,62 +66,43 @@ async def save_email_to_redis(client_id: str, email_data: dict):
         return False
 
     try:
-        # email_key = f"client:{client_id}:emails:{email_data.get('from', 'unknown')}:{email_data["email_id"]}"
-        #email_key = f"client:{client_id}:email:{email_data['email_id']}"
         email_key = f"client:{client_id}:emails"
         email_key_full_email = f"client:{client_id}:full_emails"
-        
-        summary_email_data = {
-                "email_id": email_data.get("email_id"),
-                "from": email_data.get("from"),
-                "to": email_data.get("to"),
-                "subject": email_data.get("subject"),
-                "received_at": email_data.get("created_at"),
-            }
 
-        summary_content = extract_email_reply_snippet(email_data.get("full_email"))
-        summary_email_data["summary"] = summary_content
+        summary_email_data = {
+            "email_id": email_data.get("email_id"),
+            "from": email_data.get("from"),
+            "to": email_data.get("to"),
+            "subject": email_data.get("subject"),
+            "received_at": email_data.get("created_at"),
+        }
+
+        summary_email_data["summary"] = extract_email_reply_snippet(
+            email_data.get("full_email")
+        )
         summary_email_data["saved_at"] = datetime.utcnow().isoformat()
 
-
-        # Prepare clean data
-        clean_data = {}
-        for key, value in email_data.items():
-            if isinstance(value, (dict, list)):
-                clean_data[key] = json.dumps(value, default=str)
-            elif isinstance(value, datetime):
-                clean_data[key] = value.isoformat()
-            else:
-                clean_data[key] = str(value)
+        clean_data = {
+            k: (v.isoformat() if isinstance(v, datetime) else json.dumps(v) if isinstance(v, (dict, list)) else str(v))
+            for k, v in email_data.items()
+        }
 
         clean_data["saved_at"] = datetime.utcnow().isoformat()
 
-        for field, value in clean_data.items():
-            REDIS_DB.hset(
-                email_key,
-                email_data["email_id"],
-                json.dumps(summary_email_data)
-            )
+        # ✅ SINGLE WRITE (no loop)
+        REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(summary_email_data))
+        REDIS_DB.hset(email_key_full_email, email_data["email_id"], json.dumps(clean_data))
 
-            REDIS_DB.hset(
-                email_key_full_email,
-                email_data["email_id"],
-                json.dumps(clean_data)
-            )
+        result = await get_emails_sync(email_key)
 
-            #REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(summary_email_data))
-            #REDIS_DB.hset(email_key_full_email, email_data["email_id"], json.dumps(clean_data))
-            # REDIS_DB.hset(email_key, field, value)
+        print(f"✅ Saved → {email_key}")
+        print(f"✅ Saved → {email_key_full_email}")
 
-        result = await get_emails_sync(f"client:{client_id}:emails") 
-        print(f"✅ Email saved successfully to Redis → {email_key}")
-        print(f"✅ Email saved successfully to Redis → {email_key_full_email}")
         return result
 
     except Exception as e:
         print(f"❌ Failed to save email to Redis: {e}")
         return False
-
 
 async def get_emails_sync(key: str):
     emails = REDIS_DB.hgetall(key)
@@ -135,10 +116,14 @@ async def get_emails_sync(key: str):
 def normalize_emails(emails):
     normalized_emails = []
 
-    # try:
-    for key,email in emails.items():
+    for key, email in emails.items():
+
+        if isinstance(email, bytes):
+            email = email.decode("utf-8")
+
         parsed_email = json.loads(email)
-        normalized_email = {
+
+        normalized_emails.append({
             "id": parsed_email.get("email_id"),
             "name": parsed_email.get("from"),
             "email": parsed_email.get("from"),
@@ -146,10 +131,7 @@ def normalize_emails(emails):
             "text": parsed_email.get("summary"),
             "date": parsed_email.get("created_at"),
             "read": False,
-            "labels": ['meeting', 'work', 'important'],
-        }
-        normalized_emails.append(normalized_email)
+            "labels": ["meeting", "work", "important"],
+        })
 
     return normalized_emails    
-    # except Exception as e:
-    #     raise HTTPException(status_code=500, detail=f"Error normalizing emails: {e}")

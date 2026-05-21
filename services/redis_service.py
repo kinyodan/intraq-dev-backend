@@ -125,7 +125,7 @@ def normalize_emails(emails):
 
     # try:
     for key,email in emails.items():
-        parsed_email = json.parse(email)
+        parsed_email = json.loads(email)
         normalized_email = {
             "id": parsed_email.get("email_id"),
             "name": parsed_email.get("from"),

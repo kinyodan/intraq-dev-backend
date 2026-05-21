@@ -20,6 +20,7 @@ import resend
 import asyncio
 import logging
 import json
+import ast
 from services.onboarding_service import process_onboarding
 from services.upload_service import handle_upload
 from services.visualization_service import aggregate_for_chart, fetch_table_preview

@@ -1121,7 +1121,8 @@ async def send_email(
     sender_full_name: str = Form(...), 
     sender_title: str = Form(...), 
     sender_phone: str = Form(...), 
-    recipient_name: str = Form(...), 
+    recipient_name: str = Form(...),
+    content: str =  Form(...),
     reply_to: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user)
 ):
@@ -1133,13 +1134,14 @@ async def send_email(
         print(to_list)
         print(type(to_list))
 
-        template = IntraqTemplates.get_introduction_template_v2(
+        template = IntraqTemplates.get_introduction_template_custom_v2(
             first_name,
             company,
             sender_full_name,
             sender_title,
             sender_phone,
-            recipient_name
+            recipient_name,
+            content
         )
 
         params = {

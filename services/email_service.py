@@ -370,3 +370,142 @@ class IntraqTemplates:
             "subject": base_subject,
             "html_content": html_content
         }       
+
+
+    def get_introduction_template_custom_v2(
+        first_name: str = "",
+        company: str = "your organization",
+        sender_full_name:  str = "Daniel Kinyo",
+        sender_title: str = "Founder, Intraq",
+        sender_phone: str = "+254791199816",
+        content: str,
+        recipient_name: str = None
+    ):
+        """Introduction email template with dynamic parameters"""
+        
+        # Use recipient_name if provided, otherwise fallback to first_name
+        name_to_use = recipient_name or first_name
+
+        base_subject = f"Data Partnership with Intraq - {company or 'Your Organization'}"
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Intraq</title>
+            <style>
+                body {{
+                    margin: 0;
+                    padding: 0;
+                    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+                    background-color: #0f172a;
+                    color: #e2e8f0;
+                    line-height: 1.7;
+                }}
+                .container {{
+                    max-width: 620px;
+                    margin: 24px auto;
+                    background-color: #1e2937;
+                    border-radius: 16px;
+                    overflow: hidden;
+                    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+                }}
+                .header {{
+                    background: linear-gradient(135deg, #1e2937 0%, #334155 100%);
+                    padding: 45px 40px 35px;
+                    text-align: center;
+                    border-bottom: 3px solid #f97316;
+                }}
+                .header .intro-heading {{
+                    color: #cbd5e1;
+                }}
+                .logo {{
+                    font-size: 34px;
+                    font-weight: 800;
+                    letter-spacing: -1.5px;
+                    color: #ffffff;
+                    margin-bottom: 8px;
+                }}
+                .logo span {{
+                    color: #f97316;
+                }}
+                .content {{
+                    padding: 45px 40px;
+                }}
+                .content h2 {{
+                    color: #f1f5f9;
+                    font-size: 24px;
+                    margin-top: 0;
+                }}
+                .content p {{
+                    font-size: 16.5px;
+                    color: #cbd5e1;
+                    margin-bottom: 20px;
+                }}
+                .signature a {{
+                    color: #f97316;
+                    text-decoration: none;
+                }}
+                .cta-button {{
+                    display: inline-block;
+                    background: #f97316;
+                    color: #ffffff;
+                    padding: 16px 36px;
+                    text-decoration: none;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 16.5px;
+                    margin: 30px 0;
+                    box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+                }}
+                .footer {{
+                    background-color: #0f172a;
+                    padding: 35px 40px;
+                    text-align: center;
+                    font-size: 14px;
+                    color: #94a3b8;
+                    border-top: 1px solid #334155;
+                }}
+                .footer a {{
+                    color: #f97316;
+                    text-decoration: none;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <div class="logo">intra<span>q</span></div>
+                    <h1 class="intro-heading">Data Operations for Impact</h1>
+                </div>
+
+                <div class="content">
+                    <p>Hi {name_to_use},</p>
+
+                    {content}
+
+                    <p>Best regards,<br>
+                    <strong>{sender_full_name}</strong><br>
+                    <strong>{sender_phone}</strong><br>
+                    {sender_title}<br>
+                    <span class="signature"><a href="https://intraq.pro">intraq.pro</a></span>; </br>
+                    Nairobi, Kenya</p>
+                </div>
+
+                <div class="footer">
+                    <p><strong>Intraq</strong> — Reliable Data Operations for Development & Humanitarian Programmes</p>
+                    <p>
+                        <a href="https://intraq.pro">intraq.pro</a> 
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        return {
+            "subject": base_subject,
+            "html_content": html_content
+        }               

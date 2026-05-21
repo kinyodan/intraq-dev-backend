@@ -1127,6 +1127,10 @@ async def send_email(
     current_user: dict = Depends(get_current_user)
 ):
     """Send a single email using Resend"""
+    if not content:
+        print(f"content is required")
+        raise HTTPException(status_code=400, detail=f"content is required")        
+
     try:
 
         to_list = ast.literal_eval(to)

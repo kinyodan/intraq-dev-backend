@@ -378,7 +378,7 @@ class IntraqTemplates:
         sender_full_name:  str = "Daniel Kinyo",
         sender_title: str = "Founder, Intraq",
         sender_phone: str = "+254791199816",
-        content: str,
+        content: str = None,
         recipient_name: str = None
     ):
         """Introduction email template with dynamic parameters"""

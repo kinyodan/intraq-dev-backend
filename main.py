@@ -1128,7 +1128,7 @@ async def send_email(
 ):
     """Send a single email using Resend"""
     if not content:
-        print(f"content is required")
+        print(f"content is required  ")
         raise HTTPException(status_code=400, detail=f"content is required")        
 
     try:
@@ -1149,7 +1149,7 @@ async def send_email(
         )
 
         params = {
-            "from": f"{sender_full_name} <{EMAIL_DEFAULT_FROM}>",
+            "from": EMAIL_DEFAULT_FROM,
             "to": to_list,
             "subject": template["subject"],
             "html": template["html_content"],
@@ -1176,6 +1176,76 @@ async def send_email(
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
 
 
+# ======================
+# REPLY EMAIL ENDPOINT
+# ======================
+@app.post("/api/emails/reply")
+async def reply_email(
+    to: str = Form(...),
+    content: str = Form(...),
+
+    original_message_id: str = Form(...),
+    original_subject: str = Form(...),
+
+    cc: Optional[List[str]] = Form(None),
+    reply_to: Optional[str] = Form(None),
+
+    current_user: dict = Depends(get_current_user)
+):
+    """Send a single email using Resend"""
+    if not content:
+        print(f"content is required")
+        raise HTTPException(status_code=400, detail=f"content is required")        
+
+    try:
+
+        to_list = ast.literal_eval(to)
+
+        print(to_list)
+        print(type(to_list))
+
+        template = IntraqTemplates.get_reply_template_custom_v2(
+            first_name,
+            company,
+            sender_full_name,
+            sender_title,
+            sender_phone,
+            recipient_name,
+            content
+        )
+
+        params = {
+            "from": f"{sender_full_name} <{EMAIL_DEFAULT_FROM}>",
+            "to": to_list,
+            "subject": f"Re: {original_subject}",
+            "html": template["html_content"],
+            "headers": {
+                "In-Reply-To": original_message_id,
+                "References": original_message_id
+            }
+        }
+
+        if cc:
+            params["cc"] = cc
+
+        if reply_to:
+            params["reply_to"] = reply_to
+
+        response = resend.Emails.send(params)
+
+        return {
+            "success": True,
+            "message": "Reply sent successfully",
+            "message_id": response.get("id"),
+            "to": to_list,
+            "cc": cc,
+            "in_reply_to": original_message_id
+        }
+
+    except Exception as e:
+        print(f"Reply email error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+        
 # ======================
 # WEBSOCKET ENDPOINT
 # ======================

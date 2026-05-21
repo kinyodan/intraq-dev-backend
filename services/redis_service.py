@@ -96,10 +96,21 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
         clean_data["saved_at"] = datetime.utcnow().isoformat()
 
-        # ✅ Correct syntax for older redis-py (v4 and below)
         for field, value in clean_data.items():
-            REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(summary_email_data))
-            REDIS_DB.hset(email_key_full_email, email_data["email_id"], json.dumps(clean_data))
+            REDIS_DB.hset(
+                email_key,
+                email_data["email_id"],
+                json.dumps(summary_email_data)
+            )
+
+            REDIS_DB.hset(
+                email_key_full_email,
+                email_data["email_id"],
+                json.dumps(clean_data)
+            )
+
+            #REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(summary_email_data))
+            #REDIS_DB.hset(email_key_full_email, email_data["email_id"], json.dumps(clean_data))
             # REDIS_DB.hset(email_key, field, value)
 
         result = await get_emails_sync(f"client:{client_id}:emails") 
@@ -113,11 +124,11 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
 
 async def get_emails_sync(key: str):
-    emails = await REDIS_DB.hgetall(key)
+    emails = REDIS_DB.hgetall(key)
 
     if not emails:
         return {"data": False}
-        
+
     result = normalize_emails(emails)
     return result 
 

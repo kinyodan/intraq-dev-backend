@@ -1149,7 +1149,7 @@ async def send_email(
         )
 
         params = {
-            "from": EMAIL_DEFAULT_FROM,
+            "from": f"{sender_full_name} <{EMAIL_DEFAULT_FROM}>",
             "to": to_list,
             "subject": template["subject"],
             "html": template["html_content"],

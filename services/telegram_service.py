@@ -14,23 +14,38 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", None)
 
 CHAT_ID = "1541881597"
 
-async def send_telegram_msg(message):
-    print( "Starting Sending telegram message ")
-    if not TELEGRAM_TOKEN:
-        print("TELEGRAM_TOKEN not set, skipping telegram notification")
-        return
-    
-    if not HTTPX_AVAILABLE:
-        print("httpx not available, skipping telegram notification")
-        return
-    
-    TELEGRAM_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+import httpx
 
-    print( f"Sending telegram message to {TELEGRAM_URL}")
+async def send_telegram_msg(message):
+    print("🚀 Starting Sending telegram message")
+
+    if not TELEGRAM_TOKEN:
+        print("❌ TELEGRAM_TOKEN not set, skipping")
+        return
+
+    if not HTTPX_AVAILABLE:
+        print("❌ httpx not available, skipping")
+        return
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": str(message),
+        "parse_mode": "HTML"
+    }
+
+    print(f"📡 Sending to Telegram: {url}")
 
     try:
-        async with httpx.AsyncClient() as client:
-            payload = {"chat_id": CHAT_ID, "text": str(message)}
-            await client.post(TELEGRAM_URL, json=payload)
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(url, json=payload)
+
+        print(f"📨 Telegram status: {resp.status_code}")
+        print(f"📨 Telegram response: {resp.text}")
+
+        if resp.status_code != 200:
+            print("❌ Telegram API failed")
+
     except Exception as e:
-        print(f"Failed to send telegram message: {e}")
+        print(f"❌ Failed to send telegram message: {e}")

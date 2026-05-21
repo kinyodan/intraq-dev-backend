@@ -113,11 +113,12 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
 
 async def get_emails_sync(key: str):
-    emails = REDIS_DB.hgetall(key)
+    emails = await REDIS_DB.hgetall(key)
 
     if not emails:
         return {"data": False}
-    result = await normalize_emails(emails)
+        
+    result = normalize_emails(emails)
     return result 
 
 def normalize_emails(emails):

@@ -1113,7 +1113,8 @@ async def get_client_emails(
 # ======================
 @app.post("/api/emails/send")
 async def send_email(
-    to: str = Form(...),
+    to: List[str] = Form(...),
+    cc: Optional[List[str]] = Form(None),
     first_name: str = Form(...), 
     company: str = Form(...), 
     sender_full_name: str = Form(...), 
@@ -1141,6 +1142,10 @@ async def send_email(
             "subject": template["subject"],
             "html": template["html_content"],
         }
+
+        if cc:
+            params["cc"] = cc
+
         if reply_to: 
             params["reply_to"] = reply_to
 
@@ -1150,7 +1155,8 @@ async def send_email(
             "success": True,
             "message": "Email sent successfully",
             "message_id": response.get("id"),
-            "to": to
+            "to": to,
+            "cc": cc
         }
         
     except Exception as e:

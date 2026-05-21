@@ -133,8 +133,8 @@ def normalize_emails(emails):
             "subject": parsed_email.get("subject"),
             "text": parsed_email.get("summary"),
             "date": parsed_email.get("created_at"),
-            read: False,
-            labels: ['meeting', 'work', 'important'],
+            "read": False,
+            "labels": ['meeting', 'work', 'important'],
         }
         normalized_emails.append(normalized_email)
 

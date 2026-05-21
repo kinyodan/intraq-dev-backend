@@ -15,6 +15,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", None)
 CHAT_ID = "1541881597"
 
 async def send_telegram_msg(message):
+    print( "Starting Sending telegram message ")
     if not TELEGRAM_TOKEN:
         print("TELEGRAM_TOKEN not set, skipping telegram notification")
         return
@@ -24,7 +25,9 @@ async def send_telegram_msg(message):
         return
     
     TELEGRAM_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    
+
+    print( f"Sending telegram message to {TELEGRAM_URL}")
+
     try:
         async with httpx.AsyncClient() as client:
             payload = {"chat_id": CHAT_ID, "text": str(message)}

@@ -117,10 +117,10 @@ async def get_emails_sync(key: str):
 
     if not emails:
         return {"data": False}
-    result = normalize_emails(emails)
+    result = await normalize_emails(emails)
     return result 
 
-async def normalize_emails(emails):
+def normalize_emails(emails):
     normalized_emails = []
 
     # try:

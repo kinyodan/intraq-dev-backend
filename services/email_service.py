@@ -77,6 +77,26 @@ class EmailService:
                 error=str(e)
             )
 
+    async def send_reply_email(original_email, reply_html, reply_text=None):
+
+        params = {
+            "from": EMAIL_DEFAULT_FROM,
+            "to": [original_email["from"]],
+            "subject": f"Re: {original_email['subject']}",
+            "html": reply_html,
+            "headers": {
+                "In-Reply-To": original_email["message_id"],
+                "References": original_email["message_id"]
+            }
+        }
+
+        if reply_text:
+            params["text"] = reply_text
+
+        response = await resend.Emails.send(params)
+
+        return response
+
     async def send_bulk_emails(
         self,
         contacts: List[EmailContact],

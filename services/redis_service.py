@@ -79,7 +79,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
             "subject": email_data.get("subject"),
             "received_at": email_data.get("created_at"),
             "summary": extract_email_reply_snippet(email_data.get("full_email")),
-            "saved_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.utcnow().isoformat(),
             "thread_id": thread_id
         }
 
@@ -92,7 +92,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
             for k, v in email_data.items()
         }
 
-        clean_data["saved_at"] = datetime.utcnow().isoformat()
+        clean_data["created_at"] = datetime.utcnow().isoformat()
 
         # 1. store email
         REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(summary_email_data))
@@ -149,7 +149,7 @@ def normalize_emails(emails):
             "email": parsed_email.get("from"),
             "subject": parsed_email.get("subject"),
             "text": parsed_email.get("summary"),
-            "date": parsed_email.get("created_at"),
+            "date": datetime.utcnow().isoformat(),
             "read": False,
             "labels": ["meeting", "work", "important"],
         })

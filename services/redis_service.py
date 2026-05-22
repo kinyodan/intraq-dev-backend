@@ -77,7 +77,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
             "from": email_data.get("from"),
             "to": email_data.get("to"),
             "subject": email_data.get("subject"),
-            "received_at": email_data.get("created_at"),
+            "received_at": email_data.get("received_at"),
             "summary": extract_email_reply_snippet(email_data.get("full_email")),
             "created_at": datetime.utcnow().isoformat(),
             "thread_id": thread_id
@@ -149,7 +149,7 @@ def normalize_emails(emails):
             "email": parsed_email.get("from"),
             "subject": parsed_email.get("subject"),
             "text": parsed_email.get("summary"),
-            "date": datetime.utcnow().isoformat(),
+            "date": parsed_email.get("received_at"),
             "read": False,
             "labels": ["meeting", "work", "important"],
         })

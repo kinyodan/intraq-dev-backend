@@ -1304,7 +1304,7 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
                 "text": data.get("text"),
                 "html": data.get("html"),
                 "full_email": full_email,
-                "received_at": data.get("created_at"),
+                "received_at": data.get("received_at"),
                 "attachments": data.get("attachments", [])
             }
             

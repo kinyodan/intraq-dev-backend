@@ -175,7 +175,7 @@ def normalize_emails(emails):
             "subject": parsed.get("subject"),
             "text": parsed.get("summary"),
             "date": parsed.get("received_at"),
-            "read": false,
+            "read": False,
             "labels": ["meeting", "work", "important"],
         })
 

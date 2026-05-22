@@ -118,6 +118,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
         result = await get_emails_sync(email_key)
 
         print(f"✅ Saved email → {email_key}")
+        print(f"✅ Updated thread → {full_email_key}")
         print(f"✅ Updated thread → {thread_id}")
 
         return result

@@ -209,7 +209,7 @@ def get_email(client_id: str, email_id: str):
 
     if not email:
         print("NO emails retrived")
-       return []
+        return []
 
     if isinstance(email, bytes):
         email = email.decode("utf-8")

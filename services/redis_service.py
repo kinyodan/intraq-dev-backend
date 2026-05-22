@@ -81,6 +81,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
             "received_at": email_data.get("received_at"),
             "summary": extract_email_reply_snippet(email_data.get("full_email")),
             "created_at": datetime.utcnow().isoformat(),
+            "full_email": email_data,
             "thread_id": thread_id
         }
 

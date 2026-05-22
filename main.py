@@ -27,7 +27,7 @@ from services.visualization_service import aggregate_for_chart, fetch_table_prev
 from db import SessionLocal, engine, DATABASE_URL
 from models import Base, UserSession, AuthCode, User, Dataset, DatasetMeta, Package
 from redis_db import init_redis_db
-from services.redis_service import save_email_to_redis, get_emails_sync
+from services.redis_service import save_email_to_redis, get_emails_sync, get_email
 from services.resend_service import get_full_email
 from schemas import DatasetCreateResponse, DatasetInfo
 from sqlalchemy.orm import Session
@@ -1087,6 +1087,27 @@ async def get_projects(
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error fetching projects: {e}")
+
+# ======================
+# GET SINGLE EMAIL ENDPOINT
+# ======================
+@app.get("/client/email/{client_id}/{email_id}")
+async def get_single_email(
+    client_id: str,
+    email_id: str,
+    current_user: dict = Depends(get_admin_user)
+):  
+    try:
+        email = await get_email(client_id, email_id)
+
+        return JSONResponse(
+            status_code=200,
+            content={"status": True, "data":email, "message":  "Successfully retrived email data"}
+        )
+
+    except Exception as e:
+        print(e)
+        #raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")   
 
 # ======================
 # GET EMAILS ENDPOINTS

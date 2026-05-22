@@ -69,6 +69,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
     try:
         email_key = f"client:{client_id}:emails"
         thread_key = f"client:{client_id}:threads"
+        full_email_key = f"client:{client_id}:full_emails"
 
         thread_id = email_data.get("thread_id") or email_data["email_id"]
 
@@ -96,6 +97,7 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
         # 1. store email
         REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(summary_email_data))
+        REDIS_DB.hset(full_email_key, email_data["email_id"], json.dumps(email_data))
 
         # 2. attach email to thread index (NOT duplicate email)
         existing_thread = REDIS_DB.hget(thread_key, thread_id)
@@ -188,3 +190,28 @@ def normalize_emails(emails):
 #         }
 #         for tid, msgs in grouped.items()
 #     ]
+
+
+def get_email(client_id: str, email_id: str):
+
+    key = f"client:{client_id}:full_emails:{email_id}"
+    email = REDIS_DB.hgetall(key)
+
+    if not email_id:
+        print("email_id id required")
+        raise ValueError("email_id is required")
+
+    if not client_id:
+        print("client_id id required")
+        raise ValueError("client_id is required")
+
+    if not email:
+        print("NO emails retrived")
+       return []
+
+    if isinstance(email, bytes):
+        email = email.decode("utf-8")
+
+    parsed_email = json.loads(email)
+
+    return parsed_email

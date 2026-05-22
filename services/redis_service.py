@@ -166,15 +166,17 @@ def normalize_emails(emails):
             email = email.decode("utf-8")
 
         parsed = json.loads(email)
-
         thread_id = parsed.get("thread_id") or parsed.get("email_id")
 
         grouped[thread_id].append({
             "id": parsed.get("email_id"),
-            "from": parsed.get("from"),
+            "name": parsed.get("from"),
+            "email": parsed.get("from"),
             "subject": parsed.get("subject"),
             "text": parsed.get("summary"),
-            "date": parsed.get("created_at"),
+            "date": parsed.get("received_at"),
+            "read": false,
+            "labels": ["meeting", "work", "important"],
         })
 
     return [

@@ -177,6 +177,7 @@ def normalize_emails(emails):
             "date": parsed.get("received_at"),
             "read": False,
             "labels": ["meeting", "work", "important"],
+            "thread_id": thread_id,
         })
 
     return [

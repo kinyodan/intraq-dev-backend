@@ -133,56 +133,57 @@ async def get_emails_sync(key: str):
     result = normalize_emails(emails)
     return result 
 
-# def normalize_emails(emails):
-#     normalized_emails = []
-
-#     for key, email in emails.items():
-
-#         if isinstance(email, bytes):
-#             email = email.decode("utf-8")
-
-#         parsed_email = json.loads(email)
-
-#         normalized_emails.append({
-#             "id": parsed_email.get("email_id"),
-#             "name": parsed_email.get("from"),
-#             "email": parsed_email.get("from"),
-#             "subject": parsed_email.get("subject"),
-#             "text": parsed_email.get("summary"),
-#             "date": parsed_email.get("created_at"),
-#             "read": False,
-#             "labels": ["meeting", "work", "important"],
-#         })
-
-#     return normalized_emails    
-
-
 def normalize_emails(emails):
-    grouped = defaultdict(list)
+    normalized_emails = []
 
     for key, email in emails.items():
 
         if isinstance(email, bytes):
             email = email.decode("utf-8")
 
-        parsed = json.loads(email)
-        thread_id = parsed.get("thread_id") or parsed.get("email_id")
+        parsed_email = json.loads(email)
 
-        grouped[thread_id].append({
-            "id": parsed.get("email_id"),
-            "name": parsed.get("from"),
-            "email": parsed.get("from"),
-            "subject": parsed.get("subject"),
-            "text": parsed.get("summary"),
-            "date": parsed.get("received_at"),
+        normalized_emails.append({
+            "id": parsed_email.get("email_id"),
+            "name": parsed_email.get("from"),
+            "email": parsed_email.get("from"),
+            "subject": parsed_email.get("subject"),
+            "text": parsed_email.get("summary"),
+            "date": parsed_email.get("created_at"),
             "read": False,
             "labels": ["meeting", "work", "important"],
         })
 
-    return [
-        {
-            "thread_id": tid,
-            "messages": msgs
-        }
-        for tid, msgs in grouped.items()
-    ]
+    return normalized_emails    
+
+
+# def normalize_emails(emails):
+#     grouped = defaultdict(list)
+
+#     for key, email in emails.items():
+
+#         if isinstance(email, bytes):
+#             email = email.decode("utf-8")
+
+#         parsed = json.loads(email)
+#         thread_id = parsed.get("thread_id") or parsed.get("email_id")
+
+#         grouped[thread_id].append({
+#             "id": parsed.get("email_id"),
+#             "name": parsed.get("from"),
+#             "email": parsed.get("from"),
+#             "subject": parsed.get("subject"),
+#             "text": parsed.get("summary"),
+#             "date": parsed.get("received_at"),
+#             "read": False,
+#             "labels": ["meeting", "work", "important"],
+#             "thread_id": thread_id,
+#         })
+
+#     return [
+#         {
+#             "thread_id": tid,
+#             "messages": msgs
+#         }
+#         for tid, msgs in grouped.items()
+#     ]

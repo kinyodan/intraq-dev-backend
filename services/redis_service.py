@@ -4,6 +4,7 @@ from redis_db import init_redis_db
 from datetime import datetime
 from typing import Dict, Set
 from services.text_extraction_service import extract_email_reply_snippet
+from collections import defaultdict
 
 REDIS_DB = init_redis_db() if init_redis_db is not None else None
 
@@ -67,7 +68,9 @@ async def save_email_to_redis(client_id: str, email_data: dict):
 
     try:
         email_key = f"client:{client_id}:emails"
-        email_key_full_email = f"client:{client_id}:full_emails"
+        thread_key = f"client:{client_id}:threads"
+
+        thread_id = email_data.get("thread_id") or email_data["email_id"]
 
         summary_email_data = {
             "email_id": email_data.get("email_id"),
@@ -75,28 +78,45 @@ async def save_email_to_redis(client_id: str, email_data: dict):
             "to": email_data.get("to"),
             "subject": email_data.get("subject"),
             "received_at": email_data.get("created_at"),
+            "summary": extract_email_reply_snippet(email_data.get("full_email")),
+            "saved_at": datetime.utcnow().isoformat(),
+            "thread_id": thread_id
         }
 
-        summary_email_data["summary"] = extract_email_reply_snippet(
-            email_data.get("full_email")
-        )
-        summary_email_data["saved_at"] = datetime.utcnow().isoformat()
-
         clean_data = {
-            k: (v.isoformat() if isinstance(v, datetime) else json.dumps(v) if isinstance(v, (dict, list)) else str(v))
+            k: (
+                v.isoformat() if isinstance(v, datetime)
+                else json.dumps(v) if isinstance(v, (dict, list))
+                else str(v)
+            )
             for k, v in email_data.items()
         }
 
         clean_data["saved_at"] = datetime.utcnow().isoformat()
 
-        # ✅ SINGLE WRITE (no loop)
+        # 1. store email
         REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(summary_email_data))
-        REDIS_DB.hset(email_key_full_email, email_data["email_id"], json.dumps(clean_data))
+
+        # 2. attach email to thread index (NOT duplicate email)
+        existing_thread = REDIS_DB.hget(thread_key, thread_id)
+
+        if existing_thread:
+            thread_data = json.loads(existing_thread)
+            thread_data["email_ids"].append(email_data["email_id"])
+        else:
+            thread_data = {
+                "thread_id": thread_id,
+                "email_ids": [email_data["email_id"]],
+                "subject": email_data.get("subject"),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+
+        REDIS_DB.hset(thread_key, thread_id, json.dumps(thread_data))
 
         result = await get_emails_sync(email_key)
 
-        print(f"✅ Saved → {email_key}")
-        print(f"✅ Saved → {email_key_full_email}")
+        print(f"✅ Saved email → {email_key}")
+        print(f"✅ Updated thread → {thread_id}")
 
         return result
 
@@ -113,25 +133,54 @@ async def get_emails_sync(key: str):
     result = normalize_emails(emails)
     return result 
 
+# def normalize_emails(emails):
+#     normalized_emails = []
+
+#     for key, email in emails.items():
+
+#         if isinstance(email, bytes):
+#             email = email.decode("utf-8")
+
+#         parsed_email = json.loads(email)
+
+#         normalized_emails.append({
+#             "id": parsed_email.get("email_id"),
+#             "name": parsed_email.get("from"),
+#             "email": parsed_email.get("from"),
+#             "subject": parsed_email.get("subject"),
+#             "text": parsed_email.get("summary"),
+#             "date": parsed_email.get("created_at"),
+#             "read": False,
+#             "labels": ["meeting", "work", "important"],
+#         })
+
+#     return normalized_emails    
+
+
 def normalize_emails(emails):
-    normalized_emails = []
+    grouped = defaultdict(list)
 
     for key, email in emails.items():
 
         if isinstance(email, bytes):
             email = email.decode("utf-8")
 
-        parsed_email = json.loads(email)
+        parsed = json.loads(email)
 
-        normalized_emails.append({
-            "id": parsed_email.get("email_id"),
-            "name": parsed_email.get("from"),
-            "email": parsed_email.get("from"),
-            "subject": parsed_email.get("subject"),
-            "text": parsed_email.get("summary"),
-            "date": parsed_email.get("created_at"),
-            "read": False,
-            "labels": ["meeting", "work", "important"],
+        thread_id = parsed.get("thread_id") or parsed.get("email_id")
+
+        grouped[thread_id].append({
+            "id": parsed.get("email_id"),
+            "from": parsed.get("from"),
+            "subject": parsed.get("subject"),
+            "text": parsed.get("summary"),
+            "date": parsed.get("created_at"),
         })
 
-    return normalized_emails    
+    return [
+        {
+            "thread_id": tid,
+            "messages": msgs
+        }
+        for tid, msgs in grouped.items()
+    ]

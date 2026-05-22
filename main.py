@@ -1245,7 +1245,7 @@ async def reply_email(
     except Exception as e:
         print(f"Reply email error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-        
+
 # ======================
 # WEBSOCKET ENDPOINT
 # ======================
@@ -1343,7 +1343,6 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
             status_code=200,
             content={"status": "error", "message": "Webhook received but processing failed"}
         )
-
 
 # ======================
 # DATABASE MIGRATION ENDPOINTS

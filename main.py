@@ -1245,8 +1245,6 @@ async def reply_email(
             "full_email": template["html_content"],
         }
 
-        result_data = await save_reply_email_to_redis(client_id, email_data)
-
         params = {
             "from": from_email,
             "to": to_list,
@@ -1265,6 +1263,9 @@ async def reply_email(
             params["reply_to"] = reply_to
 
         response = resend.Emails.send(params)
+        email_data["sending_response"] = response
+
+        result_data = await save_reply_email_to_redis(client_id, email_data)
 
         return {
             "success": True,
@@ -1272,7 +1273,9 @@ async def reply_email(
             "message_id": response.get("id"),
             "to": to_list,
             "cc": cc,
-            "in_reply_to": original_message_id
+            "in_reply_to": original_message_id,
+            "sending_response": response,
+            "saving_status": result_data
         }
 
     except Exception as e:

@@ -578,4 +578,109 @@ class IntraqTemplates:
         return {
             "subject": base_subject,
             "html_content": html_content
-        }               
+        }
+
+
+    def get_reply_template_custom_v2(
+        sender_full_name:  str = "Daniel Kinyo",
+        sender_title: str = "Founder, Intraq",
+        sender_email: str = "Danielkinyo@intraq.pro",
+        sender_phone: str = "+254 791 199 816",
+        content: str = None,
+        original_subject: str = "RE: "
+    ):
+
+        """Introduction email template with dynamic parameters"""
+        
+        # Use recipient_name if provided, otherwise fallback to first_name
+        name_to_use = recipient_name or first_name
+
+        base_subject = {original_subject} 
+
+        html_content = f"""
+        <html>
+            <head></head>
+            <body>
+            {content}
+              <table border="0" cellpadding="0" cellspacing="0" style="max-width: 380px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-collapse: collapse; margin-bottom: 25px;">
+                <tr>
+                  <td style="padding: 0 0 15px 0;">
+                    <table border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding-right: 18px; vertical-align: top;">
+                          <div style="font-size: 28px; font-weight: 800; letter-spacing: -1.5px; color: #0f172a;">
+                            intra<span style="color: #f97316;">q</span>
+                          </div>
+                        </td>
+                        <td style="vertical-align: top; padding-top: 4px;">
+                          <div style="font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 2px;">
+                            {sender_full_name}
+                          </div>
+                          <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">
+                            {sender_title}
+                          </div>
+                          <div style="font-size: 13px; color: #334155; line-height: 1.5;">
+                            Intraq Data Solutions<br>
+                            Nairobi, Kenya
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+               
+                <tr>
+                  <td style="padding: 12px 0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+                    <table border="0" cellpadding="0" cellspacing="0" style="font-size: 13px;">
+                      <tr>
+                        <td style="padding-right: 20px;">
+                          <a href="tel:+254791199816" style="color: #64748b; text-decoration: none;">📞 {sender_phone}</a>
+                        </td>
+                        <td style="padding-right: 20px;">
+                          <a href="mailto:{sender_email}" style="color: #64748b; text-decoration: none;">✉️ {sender_email}</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+               
+                <tr>
+                  <td style="padding-top: 12px;">
+                    <a href="https://intraq.pro" style="color: #f97316; text-decoration: none; font-weight: 500; font-size: 13px;">
+                      www.intraq.pro
+                    </a>
+                    <span style="color: #cbd5e1; margin: 0 8px;">•</span>
+                    <span style="color: #64748b; font-size: 12.5px;">
+                      Professional Data Operations
+                    </span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Full Width Divider -->
+              <div style="margin: 25px 0 30px 0; width: 100%;">
+                <div style="display: flex; align-items: center; width: 100%;">
+                  <div style="flex: 1; height: 1px; background: #f59e0b33;"></div>
+                  <div style="padding: 0 18px; text-align: center; white-space: nowrap;">
+                    <div style="font-size:12px; letter-spacing:3px; color:#f59e0b; font-weight:700;">
+                      INTRAQ
+                    </div>
+                    <div style="font-size:10px; letter-spacing:1px; color:#999; margin-top:3px;">
+                      Data Solutions (DataOps) | FinOps Solutions
+                    </div>
+                  </div>
+                  <div style="flex: 1; height: 1px; background: #f59e0b33;"></div>
+                </div>
+              </div>
+
+              <div dir="ltr" style="margin-top: 20px;">
+                <div dir="ltr">test&nbsp;</div><br>
+              </div>
+            </body>
+        </html>
+        """
+
+        return {
+            "subject": base_subject,
+            "html_content": html_content
+        }  

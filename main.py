@@ -1222,12 +1222,7 @@ async def reply_email(
         to_list = ast.literal_eval(to)
 
         template = IntraqTemplates.get_reply_template_custom_v2(
-            first_name,
-            company,
-            sender_full_name,
-            sender_title,
-            sender_phone,
-            recipient_name,
+            original_subject,
             content
         )
 
@@ -1239,7 +1234,7 @@ async def reply_email(
             "from": from_email,
             "to": to_list,
             "subject": subject,
-            "received_at": email_data.get("received_at"),
+            "received_at": received_at,
             "summary": template["html_content"],
             "created_at": datetime.utcnow().isoformat(),
             "full_email": template["html_content"],

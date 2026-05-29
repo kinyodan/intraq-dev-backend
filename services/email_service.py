@@ -403,6 +403,9 @@ class IntraqTemplates:
     ):
         """Introduction email template with dynamic parameters"""
         
+        # Use recipient_name if provided, otherwise fallback to first_name
+        name_to_use = recipient_name or first_name
+
         base_subject = f"Data Partnership with Intraq - {company or 'Your Organization'}"
 
         html_content = f"""
@@ -589,9 +592,6 @@ class IntraqTemplates:
 
         """Introduction email template with dynamic parameters"""
         
-        # Use recipient_name if provided, otherwise fallback to first_name
-        name_to_use = recipient_name or first_name
-
         base_subject = {original_subject} 
 
         html_content = f"""

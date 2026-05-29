@@ -1235,16 +1235,16 @@ async def reply_email(
             "to": to_list,
             "subject": subject,
             "received_at": received_at,
-            "summary": template["html_content"],
+            "summary": content,
             "created_at": datetime.utcnow().isoformat(),
-            "full_email": template["html_content"],
+            "full_email": content,
         }
 
         params = {
             "from": from_email,
             "to": to_list,
             "subject": subject,
-            "html": template["html_content"],
+            "html": content,
             "headers": {
                 "In-Reply-To": original_message_id,
                 "References": original_message_id

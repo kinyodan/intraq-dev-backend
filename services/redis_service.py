@@ -61,6 +61,39 @@ class ConnectionManager:
 ws_manager = ConnectionManager()
 
 
+async def save_reply_email_to_redis(client_id: str, email_data: dict):
+    if not REDIS_DB:
+        print("❌ Redis not connected")
+        return False
+
+    try:
+        email_key = f"client:{client_id}:sent:emails"
+
+        summary_email_data = {
+            "email_id": email_data.get("email_id"),
+            "from": email_data.get("from"),
+            "to": email_data.get("to"),
+            "subject": email_data.get("subject"),
+            "received_at": email_data.get("received_at"),
+            "summary": extract_email_reply_snippet(email_data.get("full_email")),
+            "created_at": datetime.utcnow().isoformat(),
+            "full_email": email_data,
+        }
+
+        # 1. store email
+        REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(summary_email_data))
+
+        result = await get_emails_sync(email_key)
+
+        print(f"✅ Saved email → {email_key}")
+
+        return result
+
+    except Exception as e:
+        print(f"❌ Failed to save email to Redis: {e}")
+        return False
+
+
 async def save_email_to_redis(client_id: str, email_data: dict):
     if not REDIS_DB:
         print("❌ Redis not connected")

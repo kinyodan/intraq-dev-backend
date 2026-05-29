@@ -1221,10 +1221,10 @@ async def reply_email(
 
         to_list = ast.literal_eval(to)
 
-        template = IntraqTemplates.get_reply_template_custom_v2(
-            original_subject,
-            content
-        )
+        # template = IntraqTemplates.get_reply_template_custom_v2(
+        #     original_subject,
+        #     content
+        # )
 
         from_email = f"{sender_full_name} <{EMAIL_DEFAULT_FROM}>"
         subject = f"Re: {original_subject}"

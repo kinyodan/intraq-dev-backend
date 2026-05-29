@@ -132,7 +132,7 @@ async def get_emails_sync(key: str):
     emails = REDIS_DB.hgetall(key)
 
     if not emails:
-        return {"data": False}
+        return False
 
     result = normalize_emails(emails)
     return result 

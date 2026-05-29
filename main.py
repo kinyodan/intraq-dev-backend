@@ -27,7 +27,7 @@ from services.visualization_service import aggregate_for_chart, fetch_table_prev
 from db import SessionLocal, engine, DATABASE_URL
 from models import Base, UserSession, AuthCode, User, Dataset, DatasetMeta, Package
 from redis_db import init_redis_db
-from services.redis_service import save_email_to_redis, get_emails_sync, get_email
+from services.redis_service import save_email_to_redis, get_emails_sync, get_email, save_reply_email_to_redis
 from services.resend_service import get_full_email
 from schemas import DatasetCreateResponse, DatasetInfo
 from sqlalchemy.orm import Session
@@ -1205,6 +1205,7 @@ async def reply_email(
     to: str = Form(...),
     content: str = Form(...),
     original_message_id: str = Form(...),
+    received_at: str = Form(...),
     original_subject: str = Form(...),
     cc: Optional[List[str]] = Form(None),
     reply_to: Optional[str] = Form(None),
@@ -1220,9 +1221,6 @@ async def reply_email(
 
         to_list = ast.literal_eval(to)
 
-        print(to_list)
-        print(type(to_list))
-
         template = IntraqTemplates.get_reply_template_custom_v2(
             first_name,
             company,
@@ -1233,10 +1231,26 @@ async def reply_email(
             content
         )
 
-        params = {
-            "from": f"{sender_full_name} <{EMAIL_DEFAULT_FROM}>",
+        from_email = f"{sender_full_name} <{EMAIL_DEFAULT_FROM}>"
+        subject = f"Re: {original_subject}"
+
+        email_data = {
+            "email_id": original_message_id,
+            "from": from_email,
             "to": to_list,
-            "subject": f"Re: {original_subject}",
+            "subject": subject,
+            "received_at": email_data.get("received_at"),
+            "summary": template["html_content"],
+            "created_at": datetime.utcnow().isoformat(),
+            "full_email": template["html_content"],
+        }
+
+        result_data = await save_reply_email_to_redis(client_id, email_data)
+
+        params = {
+            "from": from_email,
+            "to": to_list,
+            "subject": subject,
             "html": template["html_content"],
             "headers": {
                 "In-Reply-To": original_message_id,

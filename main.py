@@ -1206,6 +1206,7 @@ async def reply_email(
     content: str = Form(...),
     original_message_id: str = Form(...),
     original_subject: str = Form(...),
+    client_id: str = Form(...),
     cc: Optional[List[str]] = Form(None),
     reply_to: Optional[str] = Form(None),
 

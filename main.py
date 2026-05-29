@@ -1204,10 +1204,8 @@ async def send_email(
 async def reply_email(
     to: str = Form(...),
     content: str = Form(...),
-
     original_message_id: str = Form(...),
     original_subject: str = Form(...),
-
     cc: Optional[List[str]] = Form(None),
     reply_to: Optional[str] = Form(None),
 

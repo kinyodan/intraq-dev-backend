@@ -1675,20 +1675,20 @@ def run_upload_task_background(
 
 ALLOWED_PRODUCTS = ("Voiceflow", "FileFlow", "MailFlow", "SyncFlow", "Apiflow")
 
-@app.post("/create_project", response_model=dict)
-async def create_project(
-    background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user),
-    project_name: str = Form(...),
-    client_id: str = Form(...),
-    product: str = Form(...),
-):
+# @app.post("/create_project", response_model=dict)
+# async def create_project(
+#     background_tasks: BackgroundTasks,
+#     current_user: dict = Depends(get_current_user),
+#     project_name: str = Form(...),
+#     client_id: str = Form(...),
+#     product: str = Form(...),
+# ):
 
-    if project_type not in  ALLOWED_PRODUCTS:
-        raise HTTPException(400, "The Product does not exists")
+#     if project_type not in  ALLOWED_PRODUCTS:
+#         raise HTTPException(400, "The Product does not exists")
 
-    if project_code == "null":
-        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+#     if project_code == "null":
+#         project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
 
 
 @app.post("/edit_project", response_model=dict)
@@ -1699,11 +1699,17 @@ async def edit_project(
     client_id: str = Form(...),
     product: str = Form(...),
 ):
-    if project_type not in  ALLOWED_PRODUCTS:
-        raise HTTPException(400, "The Product does not exists")
 
     if project_code == "null":
-        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+        raise HTTPException(400, "No project_code present")
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "message": f"Project edited ",
+            "project_code": project_code,
+        }
+    )
 
 @app.post("/delete_project", response_model=dict)
 async def delete_project(
@@ -1716,9 +1722,17 @@ async def delete_project(
     if not project_code:
         raise HTTPException(400, "No project_code present")
 
+    return JSONResponse(
+        status_code=202,
+        content={
+            "message": f"Project deleted  ",
+            "project_code": project_code,
+            "project_name": project_name
+        }
+    )
 
 @app.post("/create_project", response_model=dict)
-async def upload_dataset(
+async def create_project(
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
     project_name: str = Form(...),
@@ -1732,6 +1746,14 @@ async def upload_dataset(
 
     if project_code == "null":
         project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "message": f"Project created  ",
+            "project_code": project_code
+        }
+    )
 
 @app.post("/upload_dataset", response_model=dict)
 async def upload_dataset(

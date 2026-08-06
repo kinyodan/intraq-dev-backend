@@ -449,6 +449,42 @@ email_service = EmailService(
 # ======================
 # EXISTING AUTH HELPERS
 # ======================
+async def login_to_remote_api(
+    email: str, 
+    password: str, 
+    base_url: str = os.getenv("FLOWBRIDGE_API_BASE_URL", "http://localhost:8000")
+):
+    """
+    Calls your main FastAPI /login endpoint and returns the full response.
+    """
+    url = f"{base_url}/login"
+    
+    form_data = {
+        "username": email.strip().lower(),   # backend expects 'username'
+        "password": password,
+        #"client_id": "multiwoven-app",       # optional, adjust as needed
+        #"redirect_uri": "https://your-multiwoven-domain.com/auth/callback",  # optional
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            url, 
+            data=form_data,
+            timeout=30.0
+        )
+
+    try:
+        result = response.json()
+    except:
+        result = {"raw_text": response.text}
+
+    return {
+        "status_code": response.status_code,
+        "success": response.status_code == 200 and result.get("success", False),
+        "data": result,
+        "cookies": dict(response.cookies),   # if any cookies are set
+        "headers": dict(response.headers)
+    } 
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     token = credentials.credentials
@@ -682,12 +718,12 @@ async def login(
             }
         )
 
-    try:
-        bucket_name = create_user_gcs_structure(user.client_id)
-    except Exception as gcs_error:
+    #try:
+        #bucket_name = create_user_gcs_structure(user.client_id)
+    #except Exception as gcs_error:
         # Optional: You can log it and continue, or fail the signup
-        print(f"Warning: GCS setup failed but continuing signup: {gcs_error}")
-        bucket_name = None
+        #print(f"Warning: GCS setup failed but continuing signup: {gcs_error}")
+        #bucket_name = None
 
     # Generate session
     session_id = secrets.token_urlsafe(32)
@@ -716,6 +752,19 @@ async def login(
     db.add(new_auth_code)
     
     db.commit()
+
+    # Example in a Rails controller or another FastAPI route
+    flowbridge_result = await login_to_remote_api(
+        email=username,
+        password=password,
+    )
+
+    if result["success"]:
+        print("Login successful!")
+        print("Redirect URL:", result["data"].get("redirect_uri"))
+        print("Session ID:", result["data"]["auth_data"]["session_id"])
+    else:
+        print("Login failed:", result["data"])
 
     # Build query params for redirect
     q = {"code": code}
@@ -749,6 +798,9 @@ async def login(
                 "path": "/",
                 "max_age": 3600  # 1 hour
             }
+        },
+        "flowbridge_auth_data": {
+            "auth_data": flowbridge_result
         }
     }
 
@@ -1221,10 +1273,10 @@ async def reply_email(
 
         to_list = ast.literal_eval(to)
 
-        template = IntraqTemplates.get_reply_template_custom_v2(
-            original_subject,
-            content
-        )
+        # template = IntraqTemplates.get_reply_template_custom_v2(
+        #     original_subject,
+        #     content
+        # )
 
         from_email = f"{sender_full_name} <{EMAIL_DEFAULT_FROM}>"
         subject = f"Re: {original_subject}"
@@ -1620,6 +1672,67 @@ def run_upload_task_background(
 # ────────────────────────────────────────────────
 #               FIXED ENDPOINT
 # ────────────────────────────────────────────────
+
+ALLOWED_PRODUCTS = ("Voiceflow", "FileFlow", "MailFlow", "SyncFlow", "Apiflow")
+
+@app.post("/create_project", response_model=dict)
+async def create_project(
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+    project_name: str = Form(...),
+    client_id: str = Form(...),
+    product: str = Form(...),
+):
+
+    if project_type not in  ALLOWED_PRODUCTS:
+        raise HTTPException(400, "The Product does not exists")
+
+    if project_code == "null":
+        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+
+
+@app.post("/edit_project", response_model=dict)
+async def edit_project(
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+    project_name: str = Form(...),
+    client_id: str = Form(...),
+    product: str = Form(...),
+):
+    if project_type not in  ALLOWED_PRODUCTS:
+        raise HTTPException(400, "The Product does not exists")
+
+    if project_code == "null":
+        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+
+@app.post("/delete_project", response_model=dict)
+async def delete_project(
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+    project_name: str = Form(...),
+    client_id: str = Form(...),
+    project_code: Form(...),
+):
+    if not project_code:
+        raise HTTPException(400, "No project_code present")
+
+
+@app.post("/create_project", response_model=dict)
+async def upload_dataset(
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+    project_name: str = Form(...),
+    client_id: str = Form(...),
+    files: List[UploadFile] = File(...),
+    assigned_to: str = Form(...),
+    assigned_by: str = Form(...),
+):
+    if not files:
+        raise HTTPException(400, "No files uploaded")
+
+    if project_code == "null":
+        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+
 @app.post("/upload_dataset", response_model=dict)
 async def upload_dataset(
     background_tasks: BackgroundTasks,
@@ -1632,15 +1745,16 @@ async def upload_dataset(
     assigned_by: str = Form(...),
 ):
     if not files:
-        raise HTTPException(400, "No files uploaded")
+        #raise HTTPException(400, "No files uploaded")
 
     if project_code == "null":
-        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+        raise HTTPException(400, "project_code is missing")
+
 
     datasets: Dict = {}
     task_ids = []
     # We'll keep this simple — one project_code per request
-    create_project_gcs_structure(client_id, project_code)
+    #create_project_gcs_structure(client_id, project_code)
 
     datasets[project_code] = {
         "name": project_name.replace("_", " "),

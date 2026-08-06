@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Dict, Set
 from services.text_extraction_service import extract_email_reply_snippet
 from collections import defaultdict
+import re 
 
 REDIS_DB = init_redis_db() if init_redis_db is not None else None
 
@@ -100,9 +101,12 @@ async def save_email_to_redis(client_id: str, email_data: dict):
         return False
 
     try:
-        email_key = f"client:{client_id}:emails"
-        thread_key = f"client:{client_id}:threads"
-        full_email_key = f"client:{client_id}:full_emails"
+        to_email =  email_data.get("to","")
+        email_lookup_key = re.sub(r"[^a-zA-Z0-9@]", "_", to_email)
+
+        email_key = f"client:{email_lookup_key}:emails"
+        thread_key = f"client:{email_lookup_key}:threads"
+        full_email_key = f"client:{email_lookup_key}:full_emails"
 
         thread_id = email_data.get("thread_id") or email_data["email_id"]
 

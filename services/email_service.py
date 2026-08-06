@@ -582,15 +582,13 @@ class IntraqTemplates:
 
 
     def get_reply_template_custom_v2(
-        sender_full_name:  str = "Daniel Kinyo",
+        sender_full_name: str = "Daniel Kinyo",
         sender_title: str = "Founder, Intraq",
         sender_email: str = "Danielkinyo@intraq.pro",
         sender_phone: str = "+254 791 199 816",
         content: str = None,
         original_subject: str = "RE: "
     ):
-
-        """Introduction email template with dynamic parameters"""
         
         base_subject = {original_subject} 
 

@@ -6,6 +6,11 @@ intraq_meta.db
 *.sqlite3
 
 # Python cache
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 __pycache__/
 *.py[cod]
 *$py.class

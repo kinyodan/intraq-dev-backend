@@ -21,13 +21,15 @@ import asyncio
 import logging
 import json
 import ast
+from fastapi_pagination import paginate , add_pagination
+from fastapi_pagination.utils import disable_installed_extensions_check
 from services.onboarding_service import process_onboarding
 from services.upload_service import handle_upload
 from services.visualization_service import aggregate_for_chart, fetch_table_preview
 from db import SessionLocal, engine, DATABASE_URL
 from models import Base, UserSession, AuthCode, User, Dataset, DatasetMeta, Package
 from redis_db import init_redis_db
-from services.redis_service import save_email_to_redis, get_emails_sync, get_email, save_reply_email_to_redis
+from services.redis_service import save_email_to_redis, get_emails_sync, get_emails_by_ids, get_email, save_reply_email_to_redis
 from services.resend_service import get_full_email
 from schemas import DatasetCreateResponse, DatasetInfo
 from sqlalchemy.orm import Session
@@ -54,6 +56,7 @@ from services.gcs_service import (
 
 app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
 REDIS_DB = init_redis_db  #os.getenv("REDIS_DB","redis://localhost:6379/0")
+add_pagination(app)
 
 celery_app = Celery(
     'tasks',
@@ -338,107 +341,6 @@ class EmailService:
             
         return personalized
 
-# # Email templates for Intraq
-# class IntraqTemplates:
-#     @staticmethod
-#     def get_introduction_template(requirements: Optional[Dict] = None) -> EmailTemplate:
-#         base_subject = "Transform Your Data Strategy with Intraq - Reliable Data Solutions for Africa"
-        
-#         html_content = """
-#         <!DOCTYPE html>
-#         <html>
-#         <head>
-#             <meta charset="utf-8">
-#             <style>
-#                 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-#                 .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-#                 .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-#                 .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-#                 .cta-button { background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }
-#                 .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-#             </style>
-#         </head>
-#         <body>
-#             <div class="container">
-#                 <div class="header">
-#                     <h1>Intraq</h1>
-#                     <p>Reliable Data Solutions for Africa's Leading Organizations</p>
-#                 </div>
-#                 <div class="content">
-#                     <h2>Hello {{first_name}},</h2>
-                    
-#                     <p>I hope this message finds you well. I'm reaching out from <strong>Intraq</strong>, where we specialize in providing enterprise-grade data solutions tailored for African markets.</p>
-                    
-#                     <p>We understand that {{company}} faces unique data challenges, and we're here to help you:</p>
-                    
-#                     <ul>
-#                         <li>📊 Implement robust data infrastructure and pipelines</li>
-#                         <li>🔍 Gain actionable insights from your data assets</li>
-#                         <li>🌍 Navigate Africa-specific data regulations and markets</li>
-#                         <li>🚀 Scale your data capabilities as you grow</li>
-#                     </ul>
-
-#                     <p>Our solutions have helped organizations across the continent transform their data strategy and drive measurable business outcomes.</p>
-                    
-#                     <p>Would you be open to a brief 15-minute call next week to discuss how Intraq could support {{company}}'s data initiatives?</p>
-                    
-#                     <div style="text-align: center;">
-#                         <a href="https://calendly.com/intraq-demo/introduction" class="cta-button">Schedule a Discovery Call</a>
-#                     </div>
-                    
-#                     <p>Alternatively, you can reply to this email directly - I'd be happy to answer any questions you might have.</p>
-                    
-#                     <p>Looking forward to the possibility of working together!</p>
-                    
-#                     <p>Best regards,<br>
-#                     <strong>The Intraq Team</strong></p>
-#                 </div>
-#                 <div class="footer">
-#                     <p>Intraq - Reliable Data Solutions for Africa<br>
-#                     <a href="https://intraq.simokai.com">Visit our website</a> | <a href="mailto:contact@intraq.com">Contact us</a></p>
-#                     <p><small>If you'd prefer not to receive these emails, please <a href="#">unsubscribe here</a>.</small></p>
-#                 </div>
-#             </div>
-#         </body>
-#         </html>
-#         """
-        
-#         return EmailTemplate(
-#             subject=base_subject,
-#             html_content=html_content
-#         )
-
-#     @staticmethod
-#     def get_follow_up_template() -> EmailTemplate:
-#         return EmailTemplate(
-#             subject="Following up: Data Solutions for {{company}}",
-#             html_content="""
-#             <!DOCTYPE html>
-#             <html>
-#             <body>
-#                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-#                     <h2>Hi {{first_name}},</h2>
-                    
-#                     <p>I wanted to follow up on my previous email about how Intraq could help {{company}} with data solutions.</p>
-                    
-#                     <p>I understand you're busy, but I truly believe we could add significant value to your data initiatives.</p>
-                    
-#                     <p>Would any of these be helpful?</p>
-#                     <ul>
-#                         <li>A quick 10-minute chat about your current data challenges</li>
-#                         <li>Specific case studies relevant to your industry</li>
-#                         <li>Information about our implementation process</li>
-#                     </ul>
-                    
-#                     <p>No pressure at all - just let me know what would be most useful!</p>
-                    
-#                     <p>Best,<br>
-#                     The Intraq Team</p>
-#                 </div>
-#             </body>
-#             </html>
-#             """
-#         )
 
 # Initialize email service
 email_service = EmailService(
@@ -1164,23 +1066,45 @@ async def get_single_email(
 # ======================
 # GET EMAILS ENDPOINTS
 # ======================
-@app.get("/client/emails/{client_id}")
+@app.get("/client/emails/{target_inbox}")
 async def get_client_emails(
-    client_id: str,
+    target_inbox: str,
+    page: int = Query(1, ge=1),     
+    size: int = Query(20, ge=1),  
     current_user: dict = Depends(get_admin_user)
 ):  
     try:
-        key = f"client:{client_id}:emails"
-        emails = await get_emails_sync(key)
+        email_lookup_key = target_inbox.strip().lower()
+        email_key = f"client:{email_lookup_key}:emails"
+        order_key = f"{email_key}:order"
+        
+        start = (page - 1) * size
+        end = start + size - 1
+        
+        email_ids_for_page = REDIS_DB.zrevrange(order_key, start, end)
+        total_items = REDIS_DB.zcard(order_key)
+    
+        paginated_emails = await get_emails_by_ids(key, email_ids)
 
         return JSONResponse(
             status_code=200,
-            content={"status": True, "data":emails, "message":  "Successfully retrived email data"}
+            content={
+                "status": True, 
+                "data": paginated_emails, 
+                "pagination": {
+                    "total": total_items,
+                    "page": page,
+                    "size": size,
+                    "pages": total_pages
+                },
+                "message": "Successfully retrieved email data"
+            }
         )
 
     except Exception as e:
         print(e)
-        #raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")   
+        raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")
+
 
 # ======================
 # SEND EMAIL ENDPOINT
@@ -1369,7 +1293,6 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
     When client_id is provided, the email data will be broadcast via WebSocket
     to all connected clients listening on that client_id channel.
     """
-    print(f"📥 Webhook received, client_id={client_id}")
     
     try:
         payload = await request.json()
@@ -1378,6 +1301,7 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
             data = payload.get("data", {})
             
             full_email = await get_full_email(data.get("email_id"))
+            print(f"📥 Webhook received, target_inbox={full_email}")
 
             email_data = {
                 "email_id": data.get("email_id"),
@@ -1393,16 +1317,22 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
             
             print(f"📧 New inbound email received from {email_data['from']}")
             print(f"Subject: {email_data['subject']}")
-            
-            #REDIS_DB.hset(f"{client_id}:emails:{email_data['from']}", email_data)
 
-            result_data = await save_email_to_redis(client_id, email_data)
-            # result_data = await save_email_to_redis(client_id, email_data)
+            target_inbox = data.get("to", None)
+
+            if not target_inbox:
+                return JSONResponse(
+                    status_code=404,
+                    content={"status": "error", "message": "Webhook received email but target_inbox missing"}
+                ) 
+
+            email_hash = hashlib.sha256(target_inbox.encode('utf-8')).hexdigest()
+            result_data = await save_email_to_redis(email_hash, email_data)
 
             # Broadcast to WebSocket clients if client_id is provided
             if client_id:
-                print(f"📡 Broadcasting to client_id={client_id}")
-                await ws_manager.send_message_to_client(client_id, {
+                print(f"📡 Broadcasting to channel={email_hash}")
+                await ws_manager.send_message_to_client(email_hash, {
                     "type": "inbound_emails",
                     "data": result_data
                 })
@@ -1675,57 +1605,71 @@ def run_upload_task_background(
 
 ALLOWED_PRODUCTS = ("Voiceflow", "FileFlow", "MailFlow", "SyncFlow", "Apiflow")
 
-@app.post("/create_project", response_model=dict)
-async def create_project(
-    background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user),
-    project_name: str = Form(...),
-    client_id: str = Form(...),
-    product: str = Form(...),
-):
+# @app.post("/create_project", response_model=dict)
+# async def create_project(
+#     background_tasks: BackgroundTasks,
+#     current_user: dict = Depends(get_current_user),
+#     project_name: str = Form(...),
+#     client_id: str = Form(...),
+#     product: str = Form(...),
+# ):
 
-    if project_type not in  ALLOWED_PRODUCTS:
-        raise HTTPException(400, "The Product does not exists")
+#     if project_type not in  ALLOWED_PRODUCTS:
+#         raise HTTPException(400, "The Product does not exists")
 
-    if project_code == "null":
-        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+#     if project_code == "null":
+#         project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
 
 
 @app.post("/edit_project", response_model=dict)
 async def edit_project(
-    background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user),
     project_name: str = Form(...),
     client_id: str = Form(...),
     product: str = Form(...),
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
 ):
-    if project_type not in  ALLOWED_PRODUCTS:
-        raise HTTPException(400, "The Product does not exists")
 
     if project_code == "null":
-        project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
+        raise HTTPException(400, "No project_code present")
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "message": f"Project edited ",
+            "project_code": project_code,
+        }
+    )
 
 @app.post("/delete_project", response_model=dict)
 async def delete_project(
-    background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user),
     project_name: str = Form(...),
     client_id: str = Form(...),
-    project_code: Form(...),
+    project_code: str = Form(...),
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
 ):
     if not project_code:
         raise HTTPException(400, "No project_code present")
 
+    return JSONResponse(
+        status_code=202,
+        content={
+            "message": f"Project deleted  ",
+            "project_code": project_code,
+            "project_name": project_name
+        }
+    )
 
 @app.post("/create_project", response_model=dict)
-async def upload_dataset(
-    background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user),
+async def create_project(
     project_name: str = Form(...),
     client_id: str = Form(...),
     files: List[UploadFile] = File(...),
     assigned_to: str = Form(...),
     assigned_by: str = Form(...),
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
 ):
     if not files:
         raise HTTPException(400, "No files uploaded")
@@ -1733,19 +1677,27 @@ async def upload_dataset(
     if project_code == "null":
         project_code = f"PRJ-{shortuuid.ShortUUID().random(length=8).upper()}"
 
+    return JSONResponse(
+        status_code=202,
+        content={
+            "message": f"Project created  ",
+            "project_code": project_code
+        }
+    )
+
 @app.post("/upload_dataset", response_model=dict)
 async def upload_dataset(
-    background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user),
     project_name: str = Form(...),
     client_id: str = Form(...),
     project_code: str = Form(...),
     files: List[UploadFile] = File(...),
     assigned_to: str = Form(...),
     assigned_by: str = Form(...),
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
 ):
     if not files:
-        #raise HTTPException(400, "No files uploaded")
+        raise HTTPException(400, "No files uploaded")
 
     if project_code == "null":
         raise HTTPException(400, "project_code is missing")
@@ -1760,10 +1712,11 @@ async def upload_dataset(
         "name": project_name.replace("_", " "),
         "client_id": client_id,
         "project_code": project_code,
-        "due_date": (datetime.utcnow() + timedelta(days=30)).isoformat(),
         "assigned_by": assigned_by,
         "assigned_to": assigned_to,
         "datasets": []
+        "due_date": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+
     }
 
     for file in files:
@@ -2392,11 +2345,11 @@ async def empty_trash(
 
 @app.get("/visualize/")
 def visualize(
-    current_user: dict = Depends(get_current_user),
     dataset_id: str = Query(...),
     x_column: str = Query(...),
     y_column: str = Query(...),
     agg: str = Query("sum"),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Perform a simple aggregation for visualization (e.g., bar chart data)."""
@@ -2413,10 +2366,10 @@ def visualize(
 
 @app.get("/preview/")
 def preview(
-    current_user: dict = Depends(get_current_user),
     dataset_id: str = Query(...), 
     limit: int = Query(100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     ):
     """Preview dataset contents (for dashboard table or quick inspection)."""
     try:

@@ -6,6 +6,8 @@ from typing import Dict, Set
 from services.text_extraction_service import extract_email_reply_snippet
 from collections import defaultdict
 import re 
+import hashlib
+import time
 
 REDIS_DB = init_redis_db() if init_redis_db is not None else None
 
@@ -64,8 +66,19 @@ ws_manager = ConnectionManager()
 
 async def save_reply_email_to_redis(client_id: str, email_data: dict):
     if not REDIS_DB:
-        print("❌ Redis not connected")
-        return False
+        error_msg = "❌ Redis not connected"
+        print(error_msg) 
+        return {status: False, message: error_msg}
+
+    if not client_id:
+        error_msg = "❌ client_id missing!"
+        print(error_msg) 
+        return {status: False, message: error_msg}   
+
+    if not email_data:
+        error_msg = "❌ email_data missing!"
+        print(error_msg)        
+        return {status: False, message: error_msg}
 
     try:
         email_key = f"client:{client_id}:sent:emails"
@@ -92,78 +105,100 @@ async def save_reply_email_to_redis(client_id: str, email_data: dict):
 
     except Exception as e:
         print(f"❌ Failed to save email to Redis: {e}")
-        return False
+        return {status: False, message: e}
 
-
-async def save_email_to_redis(client_id: str, email_data: dict):
+async def save_email_to_redis(target_inbox: str, email_data: dict):
+    
     if not REDIS_DB:
-        print("❌ Redis not connected")
-        return False
+        error_msg = "❌ Redis not connected"
+        print(error_msg)
+        return {status: False, message: error_msg}
 
-    try:
-        to_email =  email_data.get("to","")
-        email_lookup_key = re.sub(r"[^a-zA-Z0-9@]", "_", to_email)
+    if not target_inbox:
+        error_msg = "❌ target_inbox missing!"
+        print(error_msg) 
+        return {status: False, message: error_msg}  
+    
+    timestamp_score = time.time() 
 
-        email_key = f"client:{email_lookup_key}:emails"
-        thread_key = f"client:{email_lookup_key}:threads"
-        full_email_key = f"client:{email_lookup_key}:full_emails"
+    try:        
+        clean_inbox = target_inbox.strip().lower()
+        email_key = f"client:{clean_inbox}:emails"
+        thread_key = f"client:{clean_inbox}:threads"
+        full_email_key = f"client:{clean_inbox}:full_emails"
+        order_key = f"{email_key}:order"
 
         thread_id = email_data.get("thread_id") or email_data["email_id"]
+        email_id = email_data["email_id"]
+        current_time_str = datetime.now(timezone.utc).isoformat()
 
+        # PRE-FORMAT HERE: Shape the data perfectly for your frontend UI right now
         summary_email_data = {
-            "email_id": email_data.get("email_id"),
-            "from": email_data.get("from"),
-            "to": email_data.get("to"),
+            "id": email_id,
+            "name": email_data.get("from"),
+            "email": email_data.get("from"),
             "subject": email_data.get("subject"),
-            "received_at": email_data.get("received_at"),
-            "summary": extract_email_reply_snippet(email_data.get("full_email")),
-            "created_at": datetime.utcnow().isoformat(),
-            "full_email": email_data,
+            "text": extract_email_reply_snippet(email_data.get("full_email")),
+            "date": email_data.get("received_at") or current_time_str,
+            "read": False,
+            "full_email": email_data.get("full_email"),
+            "labels": ["meeting", "work", "important"], # Default starting tags
             "thread_id": thread_id
         }
 
-        clean_data = {
-            k: (
-                v.isoformat() if isinstance(v, datetime)
-                else json.dumps(v) if isinstance(v, (dict, list))
-                else str(v)
-            )
-            for k, v in email_data.items()
-        }
+        # 1. Store email data structures natively
+        REDIS_DB.hset(email_key, email_id, json.dumps(summary_email_data))
+        REDIS_DB.hset(full_email_key, email_id, json.dumps(email_data))
 
-        clean_data["created_at"] = datetime.utcnow().isoformat()
-
-        # 1. store email
-        REDIS_DB.hset(email_key, email_data["email_id"], json.dumps(summary_email_data))
-        REDIS_DB.hset(full_email_key, email_data["email_id"], json.dumps(email_data))
-
-        # 2. attach email to thread index (NOT duplicate email)
+        order_key = f"{email_key}:order"
+        REDIS_DB.zadd(order_key, {email_data["email_id"]: timestamp_score})
+        
+        # 3. Attach email to thread index
         existing_thread = REDIS_DB.hget(thread_key, thread_id)
 
         if existing_thread:
             thread_data = json.loads(existing_thread)
-            thread_data["email_ids"].append(email_data["email_id"])
+            if email_id not in thread_data["email_ids"]: # Avoid duplicates on retry
+                thread_data["email_ids"].append(email_id)
+            thread_data["updated_at"] = current_time_str
         else:
             thread_data = {
                 "thread_id": thread_id,
-                "email_ids": [email_data["email_id"]],
+                "email_ids": [email_id],
                 "subject": email_data.get("subject"),
-                "updated_at": datetime.utcnow().isoformat()
+                "updated_at": current_time_str
             }
 
         REDIS_DB.hset(thread_key, thread_id, json.dumps(thread_data))
 
-        result = await get_emails_sync(email_key)
-
         print(f"✅ Saved email → {email_key}")
         print(f"✅ Updated thread → {full_email_key}")
-        print(f"✅ Updated thread → {thread_id}")
+        print(f"✅ Updated index tracking → {order_key}")
 
-        return result
+        # Return the summary data payload directly without hitting Redis again
+        return {"status": True, "data": summary_email_data}
 
     except Exception as e:
         print(f"❌ Failed to save email to Redis: {e}")
-        return False
+        return {"status": False, "message": str(e)}
+
+
+# Modified utility function to fetch ONLY specific IDs
+async def get_emails_by_ids(key: str, email_ids: list):
+    if not email_ids:
+        return []
+        
+    # HMGET fetches only the requested keys out of the Hash
+    raw_emails = REDIS_DB.hmget(key, email_ids)
+    
+    # Reconstruct into a dictionary format so your normalizer can parse it
+    emails_dict = {email_ids[i]: raw_emails[i] for i in range(len(email_ids)) if raw_emails[i]}
+    
+    if not emails_dict:
+        return []
+        
+    return normalize_emails(emails_dict)
+
 
 async def get_emails_sync(key: str):
     emails = REDIS_DB.hgetall(key)

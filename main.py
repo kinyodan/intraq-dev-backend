@@ -1623,10 +1623,10 @@ ALLOWED_PRODUCTS = ("Voiceflow", "FileFlow", "MailFlow", "SyncFlow", "Apiflow")
 
 @app.post("/edit_project", response_model=dict)
 async def edit_project(
+    background_tasks: BackgroundTasks,
     project_name: str = Form(...),
     client_id: str = Form(...),
     product: str = Form(...),
-    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
 ):
 
@@ -1643,10 +1643,10 @@ async def edit_project(
 
 @app.post("/delete_project", response_model=dict)
 async def delete_project(
+    background_tasks: BackgroundTasks,
     project_name: str = Form(...),
     client_id: str = Form(...),
     project_code: str = Form(...),
-    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
 ):
     if not project_code:
@@ -1663,12 +1663,12 @@ async def delete_project(
 
 @app.post("/create_project", response_model=dict)
 async def create_project(
+    background_tasks: BackgroundTasks,
     project_name: str = Form(...),
     client_id: str = Form(...),
     files: List[UploadFile] = File(...),
     assigned_to: str = Form(...),
     assigned_by: str = Form(...),
-    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
 ):
     if not files:
@@ -1687,13 +1687,13 @@ async def create_project(
 
 @app.post("/upload_dataset", response_model=dict)
 async def upload_dataset(
+    background_tasks: BackgroundTasks,
     project_name: str = Form(...),
     client_id: str = Form(...),
     project_code: str = Form(...),
     files: List[UploadFile] = File(...),
     assigned_to: str = Form(...),
     assigned_by: str = Form(...),
-    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
 ):
     if not files:

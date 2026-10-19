@@ -2345,11 +2345,11 @@ async def empty_trash(
 
 @app.get("/visualize/")
 def visualize(
-    current_user: dict = Depends(get_current_user),
     dataset_id: str = Query(...),
     x_column: str = Query(...),
     y_column: str = Query(...),
     agg: str = Query("sum"),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Perform a simple aggregation for visualization (e.g., bar chart data)."""
@@ -2366,10 +2366,10 @@ def visualize(
 
 @app.get("/preview/")
 def preview(
-    current_user: dict = Depends(get_current_user),
     dataset_id: str = Query(...), 
     limit: int = Query(100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     ):
     """Preview dataset contents (for dashboard table or quick inspection)."""
     try:

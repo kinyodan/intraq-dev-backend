@@ -25,3 +25,4 @@ google-cloud-storage
 upstash-redis
 beautifulsoup4
 reportlab
+fastapi-pagination

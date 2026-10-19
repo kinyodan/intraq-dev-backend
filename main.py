@@ -1714,7 +1714,7 @@ async def upload_dataset(
         "project_code": project_code,
         "assigned_by": assigned_by,
         "assigned_to": assigned_to,
-        "datasets": []
+        "datasets": [],
         "due_date": (datetime.utcnow() + timedelta(days=30)).isoformat(),
 
     }

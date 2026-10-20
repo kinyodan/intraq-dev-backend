@@ -661,12 +661,12 @@ async def login(
     #     password=password,
     # )
 
-    if result["success"]:
-        print("Login successful!")
-        print("Redirect URL:", result["data"].get("redirect_uri"))
-        print("Session ID:", result["data"]["auth_data"]["session_id"])
-    else:
-        print("Login failed:", result["data"])
+    # if result["success"]:
+    #     print("Login successful!")
+    #     print("Redirect URL:", result["data"].get("redirect_uri"))
+    #     print("Session ID:", result["data"]["auth_data"]["session_id"])
+    # else:
+    #     print("Login failed:", result["data"])
 
     # Build query params for redirect
     q = {"code": code}

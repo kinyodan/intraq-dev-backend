@@ -701,9 +701,9 @@ async def login(
                 "max_age": 3600  # 1 hour
             }
         },
-        "flowbridge_auth_data": {
-            "auth_data": flowbridge_result
-        }
+        # "flowbridge_auth_data": {
+        #     "auth_data": flowbridge_result
+        # }
     }
 
     # Create JSON response

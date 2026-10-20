@@ -55,7 +55,7 @@ from services.gcs_service import (
 )
 
 app = FastAPI(title="Intraq - Dynamic Dataset Ingest & Visualization API")
-REDIS_DB = init_redis_db  #os.getenv("REDIS_DB","redis://localhost:6379/0")
+REDIS_DB = init_redis_db()  #os.getenv("REDIS_DB","redis://localhost:6379/0")
 add_pagination(app)
 
 celery_app = Celery(

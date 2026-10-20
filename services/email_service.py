@@ -49,13 +49,18 @@ from sqlalchemy.exc import IntegrityError
 # from app.models import Inbox 
 
 class EmailInboxService:
-    def __init__(self, client_id: str, inboxes: list[str] | str, dbSession):
+    def __init__(self, client_id: str, dbSession):
         self.client_id = client_id
-        self.raw_inboxes = [inboxes] if isinstance(inboxes, str) else inboxes
         self.dbSession = dbSession
 
-    async def create_inbox(self):
+    async def create_inbox(self, inboxes: list[str] | str):
         db = self.dbSession 
+
+        if not inboxes:
+            return {"status": False, "message": "missing inboxes."}
+
+        raw_inboxes = [inboxes] if isinstance(inboxes, str) else inboxes
+
         try:
             inboxes_created = {}
             duplicates_skipped = []
@@ -105,6 +110,23 @@ class EmailInboxService:
             db.rollback()
             print(f"❌ Failed to create inbox: {e}")
             raise HTTPException(status_code=500, detail=f"Internal server error creating inbox: {e}")
+
+
+    async def get_inboxes(self):
+        db = self.dbSession 
+
+        try:
+            inboxes = db.query(Inbox).filter(Inbox.client_id == self.client_id)
+
+            return {
+                "status": True, 
+                "message": f"Successfully retrieved {len(inboxes)} inboxes.", 
+                "data": inboxes,
+            }
+
+        except Exception as e:
+            print(f"❌ Failed to get inboxes: {e}")
+            raise HTTPException(status_code=400, detail=f"Error getting inboxes for client_id: {client_id}: {e}")
 
 
 class EmailService:

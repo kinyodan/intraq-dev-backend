@@ -968,7 +968,7 @@ async def get_single_email(
 
 
 # ======================
-# GET EMAILS ENDPOINTS
+# CREATE INBOXES 
 # ======================
 @app.post("/admin/create_inbox/{client_id}")
 async def create_inbox(
@@ -982,11 +982,10 @@ async def create_inbox(
         
         service = EmailInboxService(
             client_id=client_id, 
-            inboxes=inbox_data, 
             dbSession=db
         )
         
-        result = await service.create_inbox()
+        result = await service.create_inbox(inboxes=inbox_data)
 
         if not result.get("status"):
             raise HTTPException(
@@ -1007,7 +1006,25 @@ async def create_inbox(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail=f"Error creating client inbox(s): {e}"
         )
-        
+
+
+# ======================
+# GET INBOXES 
+# ======================
+@app.post("/admin/client_inboxes/{client_id}")
+async def create_inbox(
+    client_id: str,
+    current_user: dict = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    try:
+
+
+
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")
+
 # ======================
 # GET EMAILS ENDPOINTS
 # ======================

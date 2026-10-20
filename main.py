@@ -656,10 +656,10 @@ async def login(
     db.commit()
 
     # Example in a Rails controller or another FastAPI route
-    flowbridge_result = await login_to_remote_api(
-        email=username,
-        password=password,
-    )
+    # flowbridge_result = await login_to_remote_api(
+    #     email=username,
+    #     password=password,
+    # )
 
     if result["success"]:
         print("Login successful!")

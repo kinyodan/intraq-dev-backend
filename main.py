@@ -31,6 +31,7 @@ from models import Base, UserSession, AuthCode, User, Dataset, DatasetMeta, Pack
 from redis_db import init_redis_db
 from services.redis_service import save_email_to_redis, get_emails_sync, get_emails_by_ids, get_email, save_reply_email_to_redis
 from services.resend_service import get_full_email
+from services.email_service import EmailInboxService
 from schemas import DatasetCreateResponse, DatasetInfo
 from sqlalchemy.orm import Session
 import uuid  # or your generate_client_id()
@@ -249,105 +250,6 @@ class StorageBucketRequest(BaseModel):
     client_id: str
     project_code: str
 
-
-class EmailService:
-    def __init__(self, from_email: str, from_name: str = "Intraq"):
-        self.from_email = from_email
-        self.from_name = from_name
-        self.default_from = f"{from_name} <{from_email}>"
-
-    async def send_single_email(
-        self, 
-        to_contact: EmailContact, 
-        template: EmailTemplate,
-        reply_to: Optional[str] = None
-    ) -> EmailResult:
-        """Send a single email to one contact"""
-        try:
-            params = {
-                "from": self.default_from,
-                "to": [to_contact.email],
-                "subject": template.subject,
-                "html": self._personalize_template(template.html_content, to_contact),
-                "text": self._personalize_template(template.text_content, to_contact) if template.text_content else None,
-                "reply_to": reply_to
-            }
-
-            # Remove None values
-            params = {k: v for k, v in params.items() if v is not None}
-
-            response = resend.Emails.send(params)
-            
-            print(f"Email sent successfully to {to_contact.email}: {response['id']}")
-            return EmailResult(
-                success=True,
-                email=to_contact.email,
-                message_id=response['id']
-            )
-            
-        except Exception as e:
-            print(f"Failed to send email to {to_contact.email}: {str(e)}")
-            return EmailResult(
-                success=False,
-                email=to_contact.email,
-                error=str(e)
-            )
-
-    async def send_bulk_emails(
-        self,
-        contacts: List[EmailContact],
-        template: EmailTemplate,
-        batch_size: int = 50,
-        delay_between_batches: float = 1.0
-    ) -> List[EmailResult]:
-        """Send emails to multiple contacts with rate limiting"""
-        results = []
-        
-        for i in range(0, len(contacts), batch_size):
-            batch = contacts[i:i + batch_size]
-            batch_tasks = []
-            
-            for contact in batch:
-                task = self.send_single_email(contact, template)
-                batch_tasks.append(task)
-            
-            # Process current batch
-            batch_results = await asyncio.gather(*batch_tasks)
-            results.extend(batch_results)
-            
-            # Rate limiting between batches
-            if i + batch_size < len(contacts):
-                await asyncio.sleep(delay_between_batches)
-                
-            print(f"Processed batch {i//batch_size + 1}/{(len(contacts)-1)//batch_size + 1}")
-        
-        return results
-
-    def _personalize_template(self, content: str, contact: EmailContact) -> str:
-        """Personalize email template with contact information"""
-        if not content:
-            return content
-            
-        replacements = {
-            "{{name}}": contact.name,
-            "{{first_name}}": contact.name.split()[0] if contact.name else "there",
-            "{{company}}": contact.company or "your company",
-            "{{email}}": contact.email
-        }
-        
-        personalized = content
-        for placeholder, value in replacements.items():
-            personalized = personalized.replace(placeholder, value)
-            
-        return personalized
-
-
-# Initialize email service
-email_service = EmailService(
-    from_email=os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
-    from_name="Intraq"
-)
-
 # ======================
 # EXISTING AUTH HELPERS
 # ======================
@@ -387,6 +289,7 @@ async def login_to_remote_api(
         "cookies": dict(response.cookies),   # if any cookies are set
         "headers": dict(response.headers)
     } 
+
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     token = credentials.credentials
@@ -1063,6 +966,48 @@ async def get_single_email(
         print(e)
         #raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")   
 
+
+# ======================
+# GET EMAILS ENDPOINTS
+# ======================
+@app.post("/admin/create_inbox/{client_id}")
+async def create_inbox(
+    client_id: str,
+    emails: dict,  # Expecting JSON body format like: {"emails": ["user1@ex.com", "user2@ex.com"]}
+    current_user: dict = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        inbox_data = emails.get("emails") or emails
+        
+        service = EmailInboxService(
+            client_id=client_id, 
+            inboxes=inbox_data, 
+            dbSession=db
+        )
+        
+        result = await service.create_inbox()
+
+        if not result.get("status"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail=result.get("message", "Failed to process request")
+            )
+
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content=result
+        )
+
+    except HTTPException:
+        raise  # Re-raise explicit FastAPI HTTP exceptions cleanly
+    except Exception as e:
+        print(f"❌ Route level crash: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Error creating client inbox(s): {e}"
+        )
+        
 # ======================
 # GET EMAILS ENDPOINTS
 # ======================

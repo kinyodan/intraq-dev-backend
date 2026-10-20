@@ -4,6 +4,12 @@ from pydantic import BaseModel, EmailStr
 import logging
 from datetime import datetime
 import asyncio
+import hashlib
+from datetime import datetime, timezone
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -32,6 +38,74 @@ class EmailTemplateV2(BaseModel):
     subject: str
     html_content: str
     text_content: Optional[str] = None
+
+import hashlib
+from collections import defaultdict
+from datetime import datetime, timezone
+from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
+
+# Assuming Inbox model is imported
+# from app.models import Inbox 
+
+class EmailInboxService:
+    def __init__(self, client_id: str, inboxes: list[str] | str, dbSession):
+        self.client_id = client_id
+        self.raw_inboxes = [inboxes] if isinstance(inboxes, str) else inboxes
+        self.dbSession = dbSession
+
+    async def create_inbox(self):
+        db = self.dbSession 
+        try:
+            inboxes_created = {}
+            duplicates_skipped = []
+
+            for raw_inbox in self.raw_inboxes:
+                clean_inbox = raw_inbox.strip().lower()
+                # 1. Generate the unique 64-character SHA256 identifier string
+                inbox_hash = hashlib.sha256(clean_inbox.encode('utf-8')).hexdigest()
+
+                # 2. Check if this specific hashed inbox already exists in DB
+                existing = db.query(Inbox).filter(Inbox.inbox == inbox_hash).first()
+                if existing:
+                    duplicates_skipped.append(clean_inbox)
+                    continue
+
+                new_inbox = Inbox(
+                    client_id=self.client_id,
+                    inbox=inbox_hash, 
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc)
+                )
+
+                db.add(new_inbox)
+                
+                # Keep tracking map (using the string hash as key so JSON formatting behaves)
+                inboxes_created[inbox_hash] = clean_inbox
+
+            # 5. Commit everything collectively in one fast transaction block
+            if inboxes_created:
+                db.commit()
+            
+            return {
+                "status": True, 
+                "message": f"Successfully processed {len(inboxes_created)} inboxes.", 
+                "data": {
+                    "created": inboxes_created,
+                    "skipped_duplicates": duplicates_skipped
+                }
+            }
+
+        except IntegrityError as ie:
+            db.rollback()
+            print(f"❌ Database Integrity Error: {ie}")
+            return {"status": False, "message": "Database constraint violation occurred during processing."}
+            
+        except Exception as e:
+            db.rollback()
+            print(f"❌ Failed to create inbox: {e}")
+            raise HTTPException(status_code=500, detail=f"Internal server error creating inbox: {e}")
+
 
 class EmailService:
     def __init__(self, api_key: str, from_email: str, from_name: str = "Intraq"):
@@ -679,3 +753,109 @@ class IntraqTemplates:
             "subject": base_subject,
             "html_content": html_content
         }  
+
+
+
+
+
+
+
+
+
+# class EmailService:
+#     def __init__(self, from_email: str, from_name: str = "Intraq"):
+#         self.from_email = from_email
+#         self.from_name = from_name
+#         self.default_from = f"{from_name} <{from_email}>"
+
+#     async def send_single_email(
+#         self, 
+#         to_contact: EmailContact, 
+#         template: EmailTemplate,
+#         reply_to: Optional[str] = None
+#     ) -> EmailResult:
+#         """Send a single email to one contact"""
+#         try:
+#             params = {
+#                 "from": self.default_from,
+#                 "to": [to_contact.email],
+#                 "subject": template.subject,
+#                 "html": self._personalize_template(template.html_content, to_contact),
+#                 "text": self._personalize_template(template.text_content, to_contact) if template.text_content else None,
+#                 "reply_to": reply_to
+#             }
+
+#             # Remove None values
+#             params = {k: v for k, v in params.items() if v is not None}
+
+#             response = resend.Emails.send(params)
+            
+#             print(f"Email sent successfully to {to_contact.email}: {response['id']}")
+#             return EmailResult(
+#                 success=True,
+#                 email=to_contact.email,
+#                 message_id=response['id']
+#             )
+            
+#         except Exception as e:
+#             print(f"Failed to send email to {to_contact.email}: {str(e)}")
+#             return EmailResult(
+#                 success=False,
+#                 email=to_contact.email,
+#                 error=str(e)
+#             )
+
+#     async def send_bulk_emails(
+#         self,
+#         contacts: List[EmailContact],
+#         template: EmailTemplate,
+#         batch_size: int = 50,
+#         delay_between_batches: float = 1.0
+#     ) -> List[EmailResult]:
+#         """Send emails to multiple contacts with rate limiting"""
+#         results = []
+        
+#         for i in range(0, len(contacts), batch_size):
+#             batch = contacts[i:i + batch_size]
+#             batch_tasks = []
+            
+#             for contact in batch:
+#                 task = self.send_single_email(contact, template)
+#                 batch_tasks.append(task)
+            
+#             # Process current batch
+#             batch_results = await asyncio.gather(*batch_tasks)
+#             results.extend(batch_results)
+            
+#             # Rate limiting between batches
+#             if i + batch_size < len(contacts):
+#                 await asyncio.sleep(delay_between_batches)
+                
+#             print(f"Processed batch {i//batch_size + 1}/{(len(contacts)-1)//batch_size + 1}")
+        
+#         return results
+
+#     def _personalize_template(self, content: str, contact: EmailContact) -> str:
+#         """Personalize email template with contact information"""
+#         if not content:
+#             return content
+            
+#         replacements = {
+#             "{{name}}": contact.name,
+#             "{{first_name}}": contact.name.split()[0] if contact.name else "there",
+#             "{{company}}": contact.company or "your company",
+#             "{{email}}": contact.email
+#         }
+        
+#         personalized = content
+#         for placeholder, value in replacements.items():
+#             personalized = personalized.replace(placeholder, value)
+            
+#         return personalized
+
+
+# Initialize email service
+# email_service = EmailService(
+#     from_email=os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
+#     from_name="Intraq"
+# )

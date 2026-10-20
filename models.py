@@ -152,3 +152,13 @@ class Package(Base):
 
     user = relationship("User", back_populates="packages")
 
+
+class Inbox(Base):
+    """ Stores the client packages selected"""
+    __tablename__ = "inboxes"
+
+    id =  Column(Integer, primary_key=True, autoincrement=True)
+    client_id = Column(String, ForeignKey("users.client_id"), nullable=False)
+    inbox = Column(String(64), nullable=False, unique=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
-
+from models import Inbox
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class EmailInboxService:
                 inbox_hash = hashlib.sha256(clean_inbox.encode('utf-8')).hexdigest()
 
                 # 2. Check if this specific hashed inbox already exists in DB
-                existing = db.query(Inboxes).filter(Inboxes.inbox == inbox_hash).first()
+                existing = db.query(Inbox).filter(Inbox.inbox == inbox_hash).first()
                 if existing:
                     duplicates_skipped.append(clean_inbox)
                     continue

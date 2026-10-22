@@ -1019,26 +1019,26 @@ async def get_inboxes(
     current_user: dict = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
-    try:
-        service = EmailInboxService(
-            client_id=client_id, 
-            dbSession=db
-        )
-        
-        result = await service.get_inboxes()
+    # try:
+    service = EmailInboxService(
+        client_id=client_id, 
+        dbSession=db
+    )
+    
+    result = await service.get_inboxes()
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": True, 
-                "data": result, 
-                "message": "Successfully retrieved inboxes."
-            }
-        )
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": True, 
+            "data": result, 
+            "message": "Successfully retrieved inboxes."
+        }
+    )
 
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=400, detail=f"Error fetching client inboxes {e}")
+    # except Exception as e:
+    #     print(e)
+    #     raise HTTPException(status_code=400, detail=f"Error fetching client inboxes {e}")
 
 
 # ======================

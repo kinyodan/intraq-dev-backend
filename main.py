@@ -977,9 +977,11 @@ async def create_inbox(
     current_user: dict = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
+    print(emails)
+
     try:
         inbox_data = emails.get("emails") or emails
-        
+
         service = EmailInboxService(
             client_id=client_id, 
             dbSession=db

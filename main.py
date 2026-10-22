@@ -1038,7 +1038,7 @@ async def get_inboxes(
 
     except Exception as e:
         print(e)
-        raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")
+        raise HTTPException(status_code=400, detail=f"Error fetching client inboxes {e}")
 
 
 # ======================

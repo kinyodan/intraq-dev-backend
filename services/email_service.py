@@ -115,7 +115,7 @@ class EmailInboxService:
 
         try:
 
-            query = text("SELECT id, client_id, inbox, created_at FROM inboxes WHERE client_id = :client_id")
+            query = text("SELECT id, client_id, inbox, inbox_name, created_at FROM inboxes WHERE client_id = :client_id")
             result = db.execute(query, {"client_id": self.client_id}).mappings().all()
 
             # 3. Convert records directly into a clean list for the response wrapper

@@ -116,12 +116,34 @@ class EmailInboxService:
         db = self.dbSession 
 
         try:
-            inboxes = db.query(Inbox).filter(Inbox.client_id == self.client_id).all()
+
+            query = text("SELECT id, client_id, inbox, created_at FROM inboxes WHERE client_id = :client_id")
+            result = db.execute(query, {"client_id": self.client_id}).mappings().all()
+
+            # 3. Convert records directly into a clean list for the response wrapper
+            # This step executes at near-C speeds via the underlying database driver
+            serialized_inboxes = [
+                {
+                    "id": row["id"],
+                    "client_id": row["client_id"],
+                    "inbox": row["inbox"],
+                    "created_at": row["created_at"].isoformat() if row["created_at"] else None
+                }
+                for row in result
+            ]
 
             return {
                 "status": True, 
-                "message": f"Successfully retrieved {len(inboxes)} inboxes.", 
-                "data": inboxes,
+                "message": f"Successfully retrieved {len(serialized_inboxes)} inboxes.", 
+                "data": serialized_inboxes,
+            }
+            
+            # inboxes = db.query(Inbox).filter(Inbox.client_id == self.client_id).all()
+
+            return {
+                "status": True, 
+                "message": f"Successfully retrieved {len(serialized_inboxes)} inboxes.", 
+                "data": serialized_inboxes,
             }
 
         except Exception as e:

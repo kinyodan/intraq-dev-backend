@@ -126,7 +126,7 @@ class EmailInboxService:
 
         except Exception as e:
             print(f"❌ Failed to get inboxes: {e}")
-            raise HTTPException(status_code=400, detail=f"Error getting inboxes for client_id: {client_id}: {e}")
+            raise HTTPException(status_code=400, detail=f"Error getting inboxes for client_id: {self.client_id}: {e}")
 
 
 class EmailService:

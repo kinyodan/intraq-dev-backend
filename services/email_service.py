@@ -65,7 +65,7 @@ class EmailInboxService:
             inboxes_created = {}
             duplicates_skipped = []
 
-            for raw_inbox in self.raw_inboxes:
+            for raw_inbox in raw_inboxes:
                 clean_inbox = raw_inbox.strip().lower()
                 # 1. Generate the unique 64-character SHA256 identifier string
                 inbox_hash = hashlib.sha256(clean_inbox.encode('utf-8')).hexdigest()

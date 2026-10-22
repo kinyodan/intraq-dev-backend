@@ -127,7 +127,7 @@ class EmailInboxService:
                     "inbox": row["inbox"],
                     "email": row["inbox_name"],
                     "icon": "lucide:mail",
-                    "lebel": row["inbox_name"].split("@")[0]
+                    "lebel": row["inbox_name"].split("@")[0],
                     "created_at": row["created_at"].isoformat() if row["created_at"] else None
                 }
                 for row in result

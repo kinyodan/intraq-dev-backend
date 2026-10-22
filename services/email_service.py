@@ -125,6 +125,7 @@ class EmailInboxService:
                     "id": row["id"],
                     "client_id": row["client_id"],
                     "inbox": row["inbox"],
+                    "inbox_name": row["inbox_name"],
                     "created_at": row["created_at"].isoformat() if row["created_at"] else None
                 }
                 for row in result

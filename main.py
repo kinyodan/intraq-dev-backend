@@ -1013,7 +1013,7 @@ async def create_inbox(
 # ======================
 # GET INBOXES 
 # ======================
-@app.post("/admin/client_inboxes/{client_id}")
+@app.get("/admin/client_inboxes/{client_id}")
 async def get_inboxes(
     client_id: str,
     current_user: dict = Depends(get_admin_user),

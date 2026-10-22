@@ -116,7 +116,7 @@ class EmailInboxService:
         db = self.dbSession 
 
         try:
-            inboxes = db.query(Inbox).filter(Inbox.client_id == self.client_id)
+            inboxes = db.query(Inbox).filter(Inbox.client_id == self.client_id).all()
 
             return {
                 "status": True, 

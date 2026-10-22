@@ -209,6 +209,32 @@ async def get_emails_sync(key: str):
     result = normalize_emails(emails)
     return result 
 
+
+def get_email(client_id: str, email_id: str):
+
+    key = f"client:{client_id}:full_emails:{email_id}"
+    email = REDIS_DB.hgetall(key)
+
+    if not email_id:
+        print("email_id id required")
+        raise ValueError("email_id is required")
+
+    if not client_id:
+        print("client_id id required")
+        raise ValueError("client_id is required")
+
+    if not email:
+        print("NO emails retrived")
+        return []
+
+    if isinstance(email, bytes):
+        email = email.decode("utf-8")
+
+    parsed_email = json.loads(email)
+
+    return parsed_email
+
+
 def normalize_emails(emails):
     normalized_emails = []
 
@@ -266,26 +292,3 @@ def normalize_emails(emails):
 #     ]
 
 
-def get_email(client_id: str, email_id: str):
-
-    key = f"client:{client_id}:full_emails:{email_id}"
-    email = REDIS_DB.hgetall(key)
-
-    if not email_id:
-        print("email_id id required")
-        raise ValueError("email_id is required")
-
-    if not client_id:
-        print("client_id id required")
-        raise ValueError("client_id is required")
-
-    if not email:
-        print("NO emails retrived")
-        return []
-
-    if isinstance(email, bytes):
-        email = email.decode("utf-8")
-
-    parsed_email = json.loads(email)
-
-    return parsed_email

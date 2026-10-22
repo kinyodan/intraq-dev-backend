@@ -948,14 +948,14 @@ async def get_projects(
 # ======================
 # GET SINGLE EMAIL ENDPOINT
 # ======================
-@app.get("/client/email/{client_id}/{email_id}")
+@app.get("/client/email/{target_inbox}/{email_id}")
 async def get_single_email(
     client_id: str,
     email_id: str,
     current_user: dict = Depends(get_admin_user)
 ):  
     try:
-        email = await get_email(client_id, email_id)
+        email = await get_email(target_inbox, email_id)
 
         return JSONResponse(
             status_code=200,
@@ -1012,7 +1012,7 @@ async def create_inbox(
 # GET INBOXES 
 # ======================
 @app.post("/admin/client_inboxes/{client_id}")
-async def create_inbox(
+async def get_inboxes(
     client_id: str,
     current_user: dict = Depends(get_admin_user),
     db: Session = Depends(get_db)

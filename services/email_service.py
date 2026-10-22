@@ -2,14 +2,17 @@ import resend
 from typing import List, Dict, Optional
 from pydantic import BaseModel, EmailStr
 import logging
-from datetime import datetime
 import asyncio
 import hashlib
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from collections import defaultdict
+from datetime import datetime, timezone
 from fastapi import HTTPException
+from sqlalchemy import text
 from models import Inbox
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -38,12 +41,6 @@ class EmailTemplateV2(BaseModel):
     subject: str
     html_content: str
     text_content: Optional[str] = None
-
-import hashlib
-from collections import defaultdict
-from datetime import datetime, timezone
-from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError
 
 # Assuming Inbox model is imported
 # from app.models import Inbox 
@@ -137,7 +134,7 @@ class EmailInboxService:
                 "message": f"Successfully retrieved {len(serialized_inboxes)} inboxes.", 
                 "data": serialized_inboxes,
             }
-            
+
             # inboxes = db.query(Inbox).filter(Inbox.client_id == self.client_id).all()
 
             return {

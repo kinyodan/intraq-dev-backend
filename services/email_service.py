@@ -76,6 +76,7 @@ class EmailInboxService:
                 new_inbox = Inbox(
                     client_id=self.client_id,
                     inbox=inbox_hash, 
+                    inbox_name=raw_inbox,
                     created_at=datetime.now(timezone.utc),
                     updated_at=datetime.now(timezone.utc)
                 )

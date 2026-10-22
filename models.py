@@ -160,5 +160,6 @@ class Inbox(Base):
     id =  Column(Integer, primary_key=True, autoincrement=True)
     client_id = Column(String, ForeignKey("users.client_id"), nullable=False)
     inbox = Column(String(64), nullable=False, unique=True)
+    inbox_name = Column(String(64), nullable=False, unique=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

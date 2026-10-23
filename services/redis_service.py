@@ -258,36 +258,46 @@ def normalize_emails(emails: dict):
     normalized_emails = []
 
     for email_id, email in emails.items():
-        # Handle string parsing safely if it's stored as a JSON string string
+        parsed_email = None
+
+        # 1. Safely handle byte string types if present
         if isinstance(email, bytes):
             email = email.decode("utf-8")
             
+        # 2. Parse text string formats cleanly
         if isinstance(email, str):
             try:
                 parsed_email = json.loads(email)
-            except Exception:
-                continue # Skip corrupt entries safely
-        else:
-            # Upstash sometimes auto-parses objects directly into dict arrays
+            except Exception as e:
+                print(f"⚠️ JSON parsing failed for email ID {email_id}: {e}")
+                continue 
+        # 3. Direct extraction catch hook point for pre-parsed Upstash responses
+        elif isinstance(email, dict):
             parsed_email = email
+        else:
+            print(f"⚠️ Unknown email data format for key {email_id}: {type(email)}")
+            continue
 
         if not parsed_email:
             continue
 
+        # 4. Universal property extraction mapping schema
+        # (Checks all legacy and modern naming patterns concurrently)
         normalized_emails.append({
             "id": parsed_email.get("id") or parsed_email.get("email_id") or email_id,
             "name": parsed_email.get("name") or parsed_email.get("from"),
             "email": parsed_email.get("email") or parsed_email.get("from"),
             "subject": parsed_email.get("subject"),
             "text": parsed_email.get("text") or parsed_email.get("summary"),
-            "date": parsed_email.get("date") or parsed_email.get("created_at"),
+            "date": parsed_email.get("date") or parsed_email.get("created_at") or parsed_email.get("received_at"),
             "read": parsed_email.get("read", False),
-            "full_email": parsed_email.get("full_email", {}).get("full_email") if parsed_email.get("full_email") else None,
+            "full_email": parsed_email.get("full_email", {}).get("full_email") if isinstance(parsed_email.get("full_email"), dict) else parsed_email.get("full_email"),
             "labels": parsed_email.get("labels", ["meeting", "work", "important"]),
         })
 
-    return normalized_emails 
-
+    print(f"✨ Successfully normalized {len(normalized_emails)} email data profiles.")
+    return normalized_emails
+    
 
 # def normalize_emails(emails):
 #     grouped = defaultdict(list)

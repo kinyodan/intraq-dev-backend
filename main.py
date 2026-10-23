@@ -1297,6 +1297,8 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
             print(f"Subject: {email_data['subject']}")
 
             target_inbox = data.get("to", None)
+            
+            print(f"target_inbox: {target_inbox}")
 
             if not target_inbox:
                 return JSONResponse(

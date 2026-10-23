@@ -121,75 +121,75 @@ async def save_email_to_redis(target_inbox: str, email_data: dict):
     
     timestamp_score = time.time() 
 
-    try:  
+    # try:  
 
-        thread_id = email_data.get("thread_id") or email_data["email_id"]
-        email_id = email_data["email_id"]
-        current_time_str = datetime.now(timezone.utc).isoformat()
+    thread_id = email_data.get("thread_id") or email_data["email_id"]
+    email_id = email_data["email_id"]
+    current_time_str = datetime.now(timezone.utc).isoformat()
 
-        # PRE-FORMAT HERE: Shape the data perfectly for your frontend UI right now
-        summary_email_data = {
-            "id": email_id,
-            "name": email_data.get("from"),
-            "email": email_data.get("from"),
-            "subject": email_data.get("subject"),
-            "text": extract_email_reply_snippet(email_data.get("full_email")),
-            "date": email_data.get("received_at") or current_time_str,
-            "read": False,
-            "full_email": email_data.get("full_email"),
-            "labels": ["meeting", "work", "important"], # Default starting tags
-            "thread_id": thread_id
-        }
+    # PRE-FORMAT HERE: Shape the data perfectly for your frontend UI right now
+    summary_email_data = {
+        "id": email_id,
+        "name": email_data.get("from"),
+        "email": email_data.get("from"),
+        "subject": email_data.get("subject"),
+        "text": extract_email_reply_snippet(email_data.get("full_email")),
+        "date": email_data.get("received_at") or current_time_str,
+        "read": False,
+        "full_email": email_data.get("full_email"),
+        "labels": ["meeting", "work", "important"], # Default starting tags
+        "thread_id": thread_id
+    }
 
-        result_data = {"inboxes": [], "summary_email_data": summary_email_data}
+    result_data = {"inboxes": [], "summary_email_data": summary_email_data}
 
-        for inbox in target_inbox:
+    for inbox in target_inbox:
 
-            email_hash = hashlib.sha256(inbox.encode('utf-8')).hexdigest()
+        email_hash = hashlib.sha256(inbox.encode('utf-8')).hexdigest()
 
-            clean_inbox = email_hash.strip().lower()
-            email_key = f"client:{clean_inbox}:emails"
-            thread_key = f"client:{clean_inbox}:threads"
-            full_email_key = f"client:{clean_inbox}:full_emails"
-            order_key = f"{email_key}:order"
+        clean_inbox = email_hash.strip().lower()
+        email_key = f"client:{clean_inbox}:emails"
+        thread_key = f"client:{clean_inbox}:threads"
+        full_email_key = f"client:{clean_inbox}:full_emails"
+        order_key = f"{email_key}:order"
 
-            # 1. Store email data structures natively
-            REDIS_DB.hset(email_key, email_id, json.dumps(summary_email_data))
-            REDIS_DB.hset(full_email_key, email_id, json.dumps(email_data))
+        # 1. Store email data structures natively
+        REDIS_DB.hset(email_key, email_id, json.dumps(summary_email_data))
+        REDIS_DB.hset(full_email_key, email_id, json.dumps(email_data))
 
-            order_key = f"{email_key}:order"
-            REDIS_DB.zadd(order_key, {email_data["email_id"]: timestamp_score})
-            
-            # 3. Attach email to thread index
-            existing_thread = REDIS_DB.hget(thread_key, thread_id)
+        order_key = f"{email_key}:order"
+        REDIS_DB.zadd(order_key, {email_data["email_id"]: timestamp_score})
+        
+        # 3. Attach email to thread index
+        existing_thread = REDIS_DB.hget(thread_key, thread_id)
 
-            if existing_thread:
-                thread_data = json.loads(existing_thread)
-                if email_id not in thread_data["email_ids"]: # Avoid duplicates on retry
-                    thread_data["email_ids"].append(email_id)
-                thread_data["updated_at"] = current_time_str
-            else:
-                thread_data = {
-                    "thread_id": thread_id,
-                    "email_ids": [email_id],
-                    "subject": email_data.get("subject"),
-                    "updated_at": current_time_str
-                }
+        if existing_thread:
+            thread_data = json.loads(existing_thread)
+            if email_id not in thread_data["email_ids"]: # Avoid duplicates on retry
+                thread_data["email_ids"].append(email_id)
+            thread_data["updated_at"] = current_time_str
+        else:
+            thread_data = {
+                "thread_id": thread_id,
+                "email_ids": [email_id],
+                "subject": email_data.get("subject"),
+                "updated_at": current_time_str
+            }
 
-            REDIS_DB.hset(thread_key, thread_id, json.dumps(thread_data))
+        REDIS_DB.hset(thread_key, thread_id, json.dumps(thread_data))
 
-            result_data["inboxes"].append(inbox)
+        result_data["inboxes"].append(inbox)
 
-            print(f"✅ Saved email → {email_key}")
-            print(f"✅ Updated thread → {full_email_key}")
-            print(f"✅ Updated index tracking → {order_key}")
+        print(f"✅ Saved email → {email_key}")
+        print(f"✅ Updated thread → {full_email_key}")
+        print(f"✅ Updated index tracking → {order_key}")
 
-        # Return the summary data payload directly without hitting Redis again
-        return {"status": True, "data": result_data}
+    # Return the summary data payload directly without hitting Redis again
+    return {"status": True, "data": result_data}
 
-    except Exception as e:
-        print(f"❌ Failed to save email to Redis: {e}")
-        return {"status": False, "message": str(e)}
+    # except Exception as e:
+    #     print(f"❌ Failed to save email to Redis: {e}")
+    #     return {"status": False, "message": str(e)}
 
 
 # Modified utility function to fetch ONLY specific IDs

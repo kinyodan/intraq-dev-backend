@@ -1062,6 +1062,25 @@ async def get_client_emails(
         email_ids_for_page = REDIS_DB.zrevrange(order_key, start, end)
         total_items = REDIS_DB.zcard(order_key)
     
+        total_pages = (total_items + size - 1) // size if total_items > 0 else 0
+        
+        # If no items exist, return an empty array early and cleanly
+        if not email_ids_for_page:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": True, 
+                    "data": [], 
+                    "pagination": {
+                        "total": 0,
+                        "page": page,
+                        "size": size,
+                        "pages": 0
+                    },
+                    "message": "No emails found for this inbox."
+                }
+            )
+    
         paginated_emails = await get_emails_by_ids(email_key, email_ids_for_page)
 
         return JSONResponse(
@@ -1073,7 +1092,7 @@ async def get_client_emails(
                     "total": total_items,
                     "page": page,
                     "size": size,
-                    "pages": total_pages
+                    "pages": total_pages # Now safely defined!
                 },
                 "message": "Successfully retrieved email data"
             }

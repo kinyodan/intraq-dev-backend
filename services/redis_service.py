@@ -200,6 +200,15 @@ async def get_emails_by_ids(key: str, email_ids: list):
     # 1. HMGET fetches values out of the Hash
     raw_emails = REDIS_DB.hmget(key, email_ids)
     
+    # 🪲 DEBUG PRINT SECTION
+    print("--- DEBUGGING UPSTASH HMGET OUTBOUND DATA ---")
+    print(f"Requested Email IDs from sorted set: {email_ids} (Type: {type(email_ids[0])})")
+    print(f"Raw response from Upstash HMGET: {raw_emails}")
+    if raw_emails:
+        print(f"First element type: {type(raw_emails[0])}")
+    print("---------------------------------------------")
+
+
     if not raw_emails:
         return []
         
@@ -297,7 +306,7 @@ def normalize_emails(emails: dict):
 
     print(f"✨ Successfully normalized {len(normalized_emails)} email data profiles.")
     return normalized_emails
-    
+
 
 # def normalize_emails(emails):
 #     grouped = defaultdict(list)

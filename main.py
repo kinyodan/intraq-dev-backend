@@ -1062,7 +1062,7 @@ async def get_client_emails(
         email_ids_for_page = REDIS_DB.zrevrange(order_key, start, end)
         total_items = REDIS_DB.zcard(order_key)
     
-        paginated_emails = await get_emails_by_ids(key, email_ids)
+        paginated_emails = await get_emails_by_ids(email_key, email_ids)
 
         return JSONResponse(
             status_code=200,

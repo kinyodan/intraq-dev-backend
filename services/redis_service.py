@@ -142,8 +142,9 @@ async def save_email_to_redis(target_inbox: str, email_data: dict):
     }
 
     result_data = {"inboxes": [], "summary_email_data": summary_email_data}
-
-    for inbox in target_inbox:
+    inbox_list = [target_inbox] if isinstance(target_inbox, str) else target_inbox
+    
+    for inbox in inbox_list:
 
         email_hash = hashlib.sha256(inbox.encode('utf-8')).hexdigest()
 

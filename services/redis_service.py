@@ -198,7 +198,7 @@ async def get_emails_by_ids(key: str, email_ids: list):
         return []
         
     # 1. HMGET fetches values out of the Hash
-    raw_emails = REDIS_DB.hmget(key, email_ids)
+    raw_emails = REDIS_DB.hmget(key, *email_ids)
     
     # 🪲 DEBUG PRINT SECTION
     print("--- DEBUGGING UPSTASH HMGET OUTBOUND DATA ---")

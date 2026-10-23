@@ -1297,7 +1297,7 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
             print(f"Subject: {email_data['subject']}")
 
             target_inbox = data.get("to", None)
-            
+
             print(f"target_inbox: {target_inbox}")
 
             if not target_inbox:
@@ -1306,8 +1306,7 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
                     content={"status": "error", "message": "Webhook received email but target_inbox missing"}
                 ) 
 
-            email_hash = hashlib.sha256(target_inbox.encode('utf-8')).hexdigest()
-            result_data = await save_email_to_redis(email_hash, email_data)
+            result_data = await save_email_to_redis(target_inbox, email_data)
 
             # Broadcast to WebSocket clients if client_id is provided
             if client_id:

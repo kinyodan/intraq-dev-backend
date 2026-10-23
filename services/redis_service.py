@@ -112,12 +112,12 @@ async def save_email_to_redis(target_inbox: str, email_data: dict):
     if not REDIS_DB:
         error_msg = "❌ Redis not connected"
         print(error_msg)
-        return {status: False, message: error_msg}
+        return {"status": False, "message": error_msg}
 
     if not target_inbox:
         error_msg = "❌ target_inbox missing!"
         print(error_msg) 
-        return {status: False, message: error_msg}  
+        return {"status": False, "message": error_msg}  
     
     timestamp_score = time.time() 
 

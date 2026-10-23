@@ -193,17 +193,26 @@ async def save_email_to_redis(target_inbox: str, email_data: dict):
     #     return {"status": False, "message": str(e)}
 
 
-# Modified utility function to fetch ONLY specific IDs
 async def get_emails_by_ids(key: str, email_ids: list):
     if not email_ids:
         return []
         
-    # HMGET fetches only the requested keys out of the Hash
+    # 1. HMGET fetches values out of the Hash
     raw_emails = REDIS_DB.hmget(key, email_ids)
     
-    # Reconstruct into a dictionary format so your normalizer can parse it
-    emails_dict = {email_ids[i]: raw_emails[i] for i in range(len(email_ids)) if raw_emails[i]}
+    if not raw_emails:
+        return []
+        
+    emails_dict = {}
     
+    # 2. SAFE PACKING: Use zip() to perfectly map IDs to their data 
+    # This prevents any index out of range errors regardless of list lengths
+    for email_id, email_data in zip(email_ids, raw_emails):
+        if email_data is not None:
+            # Ensure the key is a clean string identifier
+            str_id = email_id.decode("utf-8") if isinstance(email_id, bytes) else str(email_id)
+            emails_dict[str_id] = email_data
+            
     if not emails_dict:
         return []
         
@@ -245,29 +254,39 @@ def get_email(client_id: str, email_id: str):
     return parsed_email
 
 
-def normalize_emails(emails):
+def normalize_emails(emails: dict):
     normalized_emails = []
 
-    for key, email in emails.items():
-
+    for email_id, email in emails.items():
+        # Handle string parsing safely if it's stored as a JSON string string
         if isinstance(email, bytes):
             email = email.decode("utf-8")
+            
+        if isinstance(email, str):
+            try:
+                parsed_email = json.loads(email)
+            except Exception:
+                continue # Skip corrupt entries safely
+        else:
+            # Upstash sometimes auto-parses objects directly into dict arrays
+            parsed_email = email
 
-        parsed_email = json.loads(email)
+        if not parsed_email:
+            continue
 
         normalized_emails.append({
-            "id": parsed_email.get("email_id"),
-            "name": parsed_email.get("from"),
-            "email": parsed_email.get("from"),
+            "id": parsed_email.get("id") or parsed_email.get("email_id") or email_id,
+            "name": parsed_email.get("name") or parsed_email.get("from"),
+            "email": parsed_email.get("email") or parsed_email.get("from"),
             "subject": parsed_email.get("subject"),
-            "text": parsed_email.get("summary"),
-            "date": parsed_email.get("created_at"),
-            "read": False,
+            "text": parsed_email.get("text") or parsed_email.get("summary"),
+            "date": parsed_email.get("date") or parsed_email.get("created_at"),
+            "read": parsed_email.get("read", False),
             "full_email": parsed_email.get("full_email", {}).get("full_email") if parsed_email.get("full_email") else None,
-            "labels": ["meeting", "work", "important"],
+            "labels": parsed_email.get("labels", ["meeting", "work", "important"]),
         })
 
-    return normalized_emails    
+    return normalized_emails 
 
 
 # def normalize_emails(emails):

@@ -121,12 +121,7 @@ async def save_email_to_redis(target_inbox: str, email_data: dict):
     
     timestamp_score = time.time() 
 
-    try:        
-        clean_inbox = target_inbox.strip().lower()
-        email_key = f"client:{clean_inbox}:emails"
-        thread_key = f"client:{clean_inbox}:threads"
-        full_email_key = f"client:{clean_inbox}:full_emails"
-        order_key = f"{email_key}:order"
+    try:  
 
         thread_id = email_data.get("thread_id") or email_data["email_id"]
         email_id = email_data["email_id"]
@@ -146,37 +141,51 @@ async def save_email_to_redis(target_inbox: str, email_data: dict):
             "thread_id": thread_id
         }
 
-        # 1. Store email data structures natively
-        REDIS_DB.hset(email_key, email_id, json.dumps(summary_email_data))
-        REDIS_DB.hset(full_email_key, email_id, json.dumps(email_data))
+        result_data = {"inboxes": [], "summary_email_data": summary_email_data}
 
-        order_key = f"{email_key}:order"
-        REDIS_DB.zadd(order_key, {email_data["email_id"]: timestamp_score})
-        
-        # 3. Attach email to thread index
-        existing_thread = REDIS_DB.hget(thread_key, thread_id)
+        for inbox in target_inbox:
 
-        if existing_thread:
-            thread_data = json.loads(existing_thread)
-            if email_id not in thread_data["email_ids"]: # Avoid duplicates on retry
-                thread_data["email_ids"].append(email_id)
-            thread_data["updated_at"] = current_time_str
-        else:
-            thread_data = {
-                "thread_id": thread_id,
-                "email_ids": [email_id],
-                "subject": email_data.get("subject"),
-                "updated_at": current_time_str
-            }
+            email_hash = hashlib.sha256(inbox.encode('utf-8')).hexdigest()
 
-        REDIS_DB.hset(thread_key, thread_id, json.dumps(thread_data))
+            clean_inbox = email_hash.strip().lower()
+            email_key = f"client:{clean_inbox}:emails"
+            thread_key = f"client:{clean_inbox}:threads"
+            full_email_key = f"client:{clean_inbox}:full_emails"
+            order_key = f"{email_key}:order"
 
-        print(f"✅ Saved email → {email_key}")
-        print(f"✅ Updated thread → {full_email_key}")
-        print(f"✅ Updated index tracking → {order_key}")
+            # 1. Store email data structures natively
+            REDIS_DB.hset(email_key, email_id, json.dumps(summary_email_data))
+            REDIS_DB.hset(full_email_key, email_id, json.dumps(email_data))
+
+            order_key = f"{email_key}:order"
+            REDIS_DB.zadd(order_key, {email_data["email_id"]: timestamp_score})
+            
+            # 3. Attach email to thread index
+            existing_thread = REDIS_DB.hget(thread_key, thread_id)
+
+            if existing_thread:
+                thread_data = json.loads(existing_thread)
+                if email_id not in thread_data["email_ids"]: # Avoid duplicates on retry
+                    thread_data["email_ids"].append(email_id)
+                thread_data["updated_at"] = current_time_str
+            else:
+                thread_data = {
+                    "thread_id": thread_id,
+                    "email_ids": [email_id],
+                    "subject": email_data.get("subject"),
+                    "updated_at": current_time_str
+                }
+
+            REDIS_DB.hset(thread_key, thread_id, json.dumps(thread_data))
+
+            result_data["inboxes"].append(inbox)
+
+            print(f"✅ Saved email → {email_key}")
+            print(f"✅ Updated thread → {full_email_key}")
+            print(f"✅ Updated index tracking → {order_key}")
 
         # Return the summary data payload directly without hitting Redis again
-        return {"status": True, "data": summary_email_data}
+        return {"status": True, "data": result_data}
 
     except Exception as e:
         print(f"❌ Failed to save email to Redis: {e}")

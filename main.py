@@ -1310,8 +1310,8 @@ async def resend_inbound_webhook(request: Request, client_id: str = Query(None))
 
             # Broadcast to WebSocket clients if client_id is provided
             if client_id:
-                print(f"📡 Broadcasting to channel={email_hash}")
-                await ws_manager.send_message_to_client(email_hash, {
+                print(f"📡 Broadcasting to channel={client_id}")
+                await ws_manager.send_message_to_client(client_id, {
                     "type": "inbound_emails",
                     "data": result_data
                 })

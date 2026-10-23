@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Header, Form, HTTPException, Depends, BackgroundTasks, APIRouter, Query, UploadFile, File, WebSocket, WebSocketDisconnect
 import json
 from redis_db import init_redis_db
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Set
 from services.text_extraction_service import extract_email_reply_snippet
 from collections import defaultdict

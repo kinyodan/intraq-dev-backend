@@ -723,7 +723,7 @@ class IntraqTemplates:
                       <tr>
                         <td style="padding-right: 18px; vertical-align: top;">
                           <div style="font-size: 28px; font-weight: 800; letter-spacing: -1.5px; color: #0f172a;">
-                            intra<span style="color: #f97316;">q</span>
+                            intra<span style="color: #ffffff;">q</span>
                           </div>
                         </td>
                         <td style="vertical-align: top; padding-top: 4px;">

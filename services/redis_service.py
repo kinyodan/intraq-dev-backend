@@ -130,8 +130,8 @@ async def save_email_to_redis(target_inbox: str, email_data: dict):
     # PRE-FORMAT HERE: Shape the data perfectly for your frontend UI right now
     summary_email_data = {
         "id": email_id,
-        "name": email_data.get("from"),
-        "email": email_data.get("from"),
+        "name": email_data.get("from").strip().lower(),
+        "email": email_data.get("from").strip().lower(),
         "subject": email_data.get("subject"),
         "text": extract_email_reply_snippet(email_data.get("full_email")),
         "date": email_data.get("received_at") or current_time_str,
@@ -146,12 +146,13 @@ async def save_email_to_redis(target_inbox: str, email_data: dict):
     
     for inbox in inbox_list:
 
-        email_hash = hashlib.sha256(inbox.encode('utf-8')).hexdigest()
+        clean_inbox = inbox.strip().lower()
+        email_hash = hashlib.sha256(clean_inbox.encode('utf-8')).hexdigest()
 
-        clean_inbox = email_hash.strip().lower()
-        email_key = f"client:{clean_inbox}:emails"
-        thread_key = f"client:{clean_inbox}:threads"
-        full_email_key = f"client:{clean_inbox}:full_emails"
+        clean_inbox_hash = email_hash.strip().lower()
+        email_key = f"client:{clean_inbox_hash}:emails"
+        thread_key = f"client:{clean_inbox_hash}:threads"
+        full_email_key = f"client:{clean_inbox_hash}:full_emails"
         order_key = f"{email_key}:order"
 
         # 1. Store email data structures natively

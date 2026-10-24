@@ -659,10 +659,10 @@ class IntraqTemplates:
                           <table border="0" cellpadding="0" cellspacing="0" style="font-size: 13px;">
                             <tr>
                               <td style="padding-right: 20px;">
-                                <a href="tel:+254XXXXXXXXX" style="color: #64748b; text-decoration: none;">📞 +254 700 000 000</a>
+                                <a href="tel:+254791199816" style="color: #64748b; text-decoration: none;">📞 +254 791 199 816</a>
                               </td>
                               <td style="padding-right: 20px;">
-                                <a href="mailto:daniel@intraq.pro" style="color: #64748b; text-decoration: none;">✉️ daniel@intraq.pro</a>
+                                <a href="mailto:danielkinyo@intraq.pro" style="color: #64748b; text-decoration: none;">✉️ danielkinyo@intraq.pro</a>
                               </td>
                             </tr>
                           </table>

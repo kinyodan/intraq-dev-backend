@@ -239,16 +239,16 @@ async def get_emails_sync(key: str):
     return result 
 
 
-def get_email(client_id: str, email_id: str):
+def get_email(inbox: str, email_id: str):
 
-    key = f"client:{client_id}:full_emails:{email_id}"
+    key = f"client:{inbox}:full_emails:{email_id}"
     email = REDIS_DB.hgetall(key)
 
     if not email_id:
         print("email_id id required")
         raise ValueError("email_id is required")
 
-    if not client_id:
+    if not inbox:
         print("client_id id required")
         raise ValueError("client_id is required")
 

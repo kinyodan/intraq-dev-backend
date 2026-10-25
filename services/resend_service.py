@@ -9,6 +9,8 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 
 async def get_full_email(email_id: str) -> Optional[Dict]:
+
+    print("fetching fullemail from resend ")
     """Fetch full email content from Resend"""
     if not RESEND_API_KEY:
         print("❌ RESEND_API_KEY not found")

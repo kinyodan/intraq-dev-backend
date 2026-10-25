@@ -945,27 +945,6 @@ async def get_projects(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error fetching projects: {e}")
 
-# ======================
-# GET SINGLE EMAIL ENDPOINT
-# ======================
-@app.get("/client/email/{target_inbox}/{email_id}")
-async def get_single_email(
-    client_id: str,
-    email_id: str,
-    current_user: dict = Depends(get_admin_user)
-):  
-    try:
-        email = await get_email(target_inbox, email_id)
-
-        return JSONResponse(
-            status_code=200,
-            content={"status": True, "data":email, "message":  "Successfully retrived email data"}
-        )
-
-    except Exception as e:
-        print(e)
-        #raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")   
-
 
 # ======================
 # CREATE INBOXES 
@@ -1102,6 +1081,26 @@ async def get_client_emails(
         print(e)
         raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")
 
+# ======================
+# GET SINGLE EMAIL ENDPOINT
+# ======================
+@app.get("/client/email/{target_inbox}/{email_id}")
+async def get_single_email(
+    target_inbox: str,
+    email_id: str,
+    current_user: dict = Depends(get_admin_user)
+):  
+    try:
+        email = await get_email(target_inbox, email_id)
+
+        return JSONResponse(
+            status_code=200,
+            content={"status": True, "data":email, "message":  "Successfully retrived email data"}
+        )
+
+    except Exception as e:
+        print(e)
+        #raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")   
 
 # ======================
 # SEND EMAIL ENDPOINT

@@ -239,7 +239,7 @@ async def get_emails_sync(key: str):
     return result 
 
 
-def get_email(inbox: str, email_id: str):
+async def get_email(inbox: str, email_id: str):
     if not email_id:
         raise ValueError("email_id is required")
     if not inbox:
@@ -248,7 +248,7 @@ def get_email(inbox: str, email_id: str):
     key = f"client:{inbox}:full_emails:{email_id}"
     
     # 1. Fetch from Redis first
-    email = REDIS_DB.get(key)
+    email = await REDIS_DB.get(key)
 
     # 2. Check if it exists
     if not email:

@@ -240,10 +240,6 @@ async def get_emails_sync(key: str):
 
 
 async def get_email(inbox: str, email_id: str):
-
-    key = f"client:{inbox}:full_emails:{email_id}"
-    email = await REDIS_DB.hgetall(key)
-
     if not email_id:
         print("email_id id required")
         raise ValueError("email_id is required")
@@ -258,6 +254,9 @@ async def get_email(inbox: str, email_id: str):
 
     if isinstance(email, bytes):
         email = email.decode("utf-8")
+
+    key = f"client:{inbox}:full_emails:{email_id}"
+    email = await REDIS_DB.hgetall(key)
 
     parsed_email = json.loads(email)
 

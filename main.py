@@ -1091,16 +1091,18 @@ async def get_single_email(
     current_user: dict = Depends(get_admin_user)
 ):  
     try:
-        email = get_email(target_inbox, email_id)
+        # Added 'await' here
+        email = await get_email(target_inbox, email_id)
 
         return JSONResponse(
             status_code=200,
-            content={"status": True, "data":email, "message":  "Successfully retrived email data"}
+            content={"status": True, "data": email, "message": "Successfully retrieved email data"}
         )
 
     except Exception as e:
         print(e)
-        raise HTTPException(status_code=400, detail=f"Error fetching email {e}")   
+        raise HTTPException(status_code=400, detail=f"Error fetching email {e}")
+ 
 
 # ======================
 # SEND EMAIL ENDPOINT

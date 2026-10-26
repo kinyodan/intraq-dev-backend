@@ -239,28 +239,28 @@ async def get_emails_sync(key: str):
     return result 
 
 
-async def get_email(inbox: str, email_id: str):
+def get_email(inbox: str, email_id: str):
     if not email_id:
-        print("email_id id required")
         raise ValueError("email_id is required")
-
     if not inbox:
-        print("client_id id required")
-        raise ValueError("client_id is required")
+        raise ValueError("inbox is required")
 
+    key = f"client:{inbox}:full_emails:{email_id}"
+    
+    # 1. Fetch from Redis first
+    email = REDIS_DB.hget(key)
+
+    # 2. Check if it exists
     if not email:
-        print("NO emails retrived")
+        print("NO emails retrieved")
         return []
 
     if isinstance(email, bytes):
         email = email.decode("utf-8")
 
-    key = f"client:{inbox}:full_emails:{email_id}"
-    email = REDIS_DB.hget(key)
-
     parsed_email = json.loads(email)
-
     return parsed_email
+
 
 
 def normalize_emails(emails: dict):

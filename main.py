@@ -1100,7 +1100,7 @@ async def get_single_email(
 
     except Exception as e:
         print(e)
-        #raise HTTPException(status_code=400, detail=f"Error fetching client emails {e}")   
+        raise HTTPException(status_code=400, detail=f"Error fetching email {e}")   
 
 # ======================
 # SEND EMAIL ENDPOINT

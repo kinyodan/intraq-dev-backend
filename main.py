@@ -1091,7 +1091,7 @@ async def get_single_email(
     current_user: dict = Depends(get_admin_user)
 ):  
     try:
-        email = await get_email(target_inbox, email_id)
+        email = get_email(target_inbox, email_id)
 
         return JSONResponse(
             status_code=200,

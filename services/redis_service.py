@@ -248,7 +248,7 @@ def get_email(inbox: str, email_id: str):
     key = f"client:{inbox}:full_emails:{email_id}"
     
     # 1. Fetch from Redis first
-    email = REDIS_DB.hget(key)
+    email = REDIS_DB.get(key)
 
     # 2. Check if it exists
     if not email:

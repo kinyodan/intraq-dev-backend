@@ -256,7 +256,7 @@ async def get_email(inbox: str, email_id: str):
         email = email.decode("utf-8")
 
     key = f"client:{inbox}:full_emails:{email_id}"
-    email = await REDIS_DB.hgetall(key)
+    email = REDIS_DB.hget(key)
 
     parsed_email = json.loads(email)
 

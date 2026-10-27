@@ -245,7 +245,7 @@ async def get_email(inbox: str, email_id: str):
     if not inbox:
         raise ValueError("inbox is required")
 
-    key = f"client:{inbox}:full_emails:{email_id}"
+    key = f"client:{inbox}:emails:{email_id}"
     print(f"the get_mail key is {key}")
     
     # 1. Fetch from Redis first

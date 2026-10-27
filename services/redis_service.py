@@ -249,7 +249,7 @@ async def get_email(inbox: str, email_id: str):
     print(f"the get_mail key is {key}")
 
     # 1. Fetch from Redis first
-    email = REDIS_DB.get(key,email_id)
+    email = REDIS_DB.hget(key,email_id)
 
     # 2. Check if it exists
     if not email:

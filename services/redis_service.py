@@ -301,7 +301,7 @@ def normalize_emails(emails: dict):
             "text": parsed_email.get("text") or parsed_email.get("summary"),
             "date": parsed_email.get("date") or parsed_email.get("created_at") or parsed_email.get("received_at"),
             "read": parsed_email.get("read", False),
-            "full_email": parsed_email.get("full_email", {}).get("full_email") if isinstance(parsed_email.get("full_email"), dict) else parsed_email.get("full_email"),
+            "full_email": parsed_email.get("full_email", {}) #.get("full_email") if isinstance(parsed_email.get("full_email"), dict) else parsed_email.get("full_email"),
             "labels": parsed_email.get("labels", ["meeting", "work", "important"]),
         })
 

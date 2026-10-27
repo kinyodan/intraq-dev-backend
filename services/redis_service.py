@@ -245,11 +245,11 @@ async def get_email(inbox: str, email_id: str):
     if not inbox:
         raise ValueError("inbox is required")
 
-    key = f"client:{inbox}:emails:{email_id}"
+    key = f"client:{inbox}:emails"
     print(f"the get_mail key is {key}")
-    
+
     # 1. Fetch from Redis first
-    email = REDIS_DB.get(key)
+    email = REDIS_DB.get(key,email_id)
 
     # 2. Check if it exists
     if not email:

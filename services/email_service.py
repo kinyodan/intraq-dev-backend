@@ -12,6 +12,14 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy import text
 from models import Inbox
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Initialize Resend
+resend.api_key = os.getenv("RESEND_API_KEY", "re_L7GET6YB_9SmX2f257av61Xon1f6jz4FS")
+EMAIL_DEFAULT_FROM = "Danielkinyo@intraq.pro"
 
 
 # Configure logging

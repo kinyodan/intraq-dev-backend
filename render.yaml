@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fastapi-app
+    name: Intraq-backend
     env: python
     runtime: python
     pythonVersion: "3.12"  # Add this line
